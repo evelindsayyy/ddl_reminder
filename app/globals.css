@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+/*
+ * Patrick Hand has a shorter x-height than Inter / system sans, so the
+ * effective glyph height looks ~1px smaller at the same `text-*` token.
+ * Bump the root size up a hair so spec sizes (text-sm = 14, text-base = 16)
+ * still feel right.
+ */
+html {
+  font-size: 16.5px;
+}
+
+@media (max-width: 640px) {
+  html {
+    font-size: 15.5px;
+  }
+}

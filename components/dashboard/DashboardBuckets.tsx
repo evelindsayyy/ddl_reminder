@@ -1,0 +1,160 @@
+'use client';
+
+import { useMemo, useOptimistic, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { bucketAssignments } from '@/lib/bucket';
+import { compareDueThenEffort } from '@/lib/score';
+import { BucketColumn } from '@/components/dashboard/BucketColumn';
+import type { AssignmentCardData } from '@/components/dashboard/AssignmentCard';
+
+interface ToggleAction {
+  id: string;
+  completedAt: string | null;
+}
+
+const FADE_MS = 200;
+
+export interface DashboardBucketsProps {
+  assignments: AssignmentCardData[];
+  timezone: string;
+  // ISO of the request — used so the bucket boundaries don't shift between
+  // server render and client hydration.
+  nowIso: string;
+}
+
+export function DashboardBuckets({
+  assignments,
+  timezone,
+  nowIso,
+}: DashboardBucketsProps) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const [optimistic, applyOptimistic] = useOptimistic<AssignmentCardData[], ToggleAction>(
+    assignments,
+    (state, action) =>
+      state.map((a) => (a.id === action.id ? { ...a, completed_at: action.completedAt } : a))
+  );
+  const [fadingIds, setFadingIds] = useState<ReadonlySet<string>>(new Set());
+
+  // Stable bucket boundary — derived from nowIso so SSR and CSR agree on
+  // which row counts as "today". Refreshes naturally when the server rerenders.
+  const now = useMemo(() => new Date(nowIso), [nowIso]);
+
+  function onToggleDone(id: string, completedAt: string | null) {
+    // Optimistic mark-done is for the dashboard's "open list" — we don't
+    // support toggling done items back from the dashboard (the list view
+    // owns that). If completedAt is null we just refresh and let the server
+    // be authoritative.
+    if (completedAt) {
+      setFadingIds((prev) => new Set(prev).add(id));
+    }
+    startTransition(() => {
+      applyOptimistic({ id, completedAt });
+    });
+
+    void (async () => {
+      try {
+        const res = await fetch(`/api/assignments/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ completedAt }),
+        });
+        if (!res.ok) throw new Error(`PATCH ${res.status}`);
+      } catch {
+        // Server roll-back via refresh
+      } finally {
+        // Wait for the fade animation to complete, then revalidate.
+        setTimeout(() => {
+          setFadingIds((prev) => {
+            const n = new Set(prev);
+            n.delete(id);
+            return n;
+          });
+          router.refresh();
+        }, FADE_MS);
+      }
+    })();
+  }
+
+  const buckets = useMemo(() => {
+    const sorted = [...optimistic].sort(compareDueThenEffort());
+    return bucketAssignments(sorted, { now, timezone, excludeCompleted: false });
+  }, [optimistic, now, timezone]);
+
+  // Open-only display (dashboard hides done). Fading items remain rendered
+  // briefly so the transition can play out.
+  const openOnly = (items: AssignmentCardData[]) =>
+    items.filter((a) => !a.completed_at || fadingIds.has(a.id));
+
+  return (
+    <div className="space-y-5">
+      {buckets.overdue.length > 0 ? (
+        <OverdueBanner
+          items={openOnly(buckets.overdue)}
+          timezone={timezone}
+          fadingIds={fadingIds}
+          onToggleDone={onToggleDone}
+        />
+      ) : null}
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5">
+        <BucketColumn
+          title="today"
+          urgent
+          items={buckets.today}
+          timezone={timezone}
+          fadingIds={fadingIds}
+          onToggleDone={onToggleDone}
+        />
+        <BucketColumn
+          title="this week"
+          items={buckets.thisWeek}
+          timezone={timezone}
+          fadingIds={fadingIds}
+          onToggleDone={onToggleDone}
+        />
+        <BucketColumn
+          title="later"
+          items={buckets.later}
+          timezone={timezone}
+          fadingIds={fadingIds}
+          onToggleDone={onToggleDone}
+        />
+      </div>
+    </div>
+  );
+}
+
+function OverdueBanner({
+  items,
+  timezone,
+  fadingIds,
+  onToggleDone,
+}: {
+  items: AssignmentCardData[];
+  timezone: string;
+  fadingIds: ReadonlySet<string>;
+  onToggleDone: (id: string, completedAt: string | null) => void;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <section
+      aria-label="Overdue"
+      className="rounded-md border border-urgent/60 bg-urgent/5 p-3"
+    >
+      <header className="mb-2 flex items-baseline justify-between">
+        <h2 className="font-display text-2xl font-semibold leading-none text-urgent">overdue</h2>
+        <span className="font-mono text-[11px] text-urgent">{items.length}</span>
+      </header>
+      <BucketColumn
+        title="overdue-list"
+        urgent
+        flat
+        items={items}
+        timezone={timezone}
+        fadingIds={fadingIds}
+        onToggleDone={onToggleDone}
+      />
+    </section>
+  );
+}

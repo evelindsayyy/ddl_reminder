@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Deadline Tracker · Wireframes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Patrick+Hand&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #e8e5dc; font-family: 'Patrick Hand', cursive; }
+  * { box-sizing: border-box; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="sketch-kit.jsx"></script>
+<script type="text/babel" src="wireframes-dashboard.jsx"></script>
+<script type="text/babel" src="wireframes-assignments.jsx"></script>
+<script type="text/babel" src="wireframes-other.jsx"></script>
+
+<script type="text/babel" data-presets="react">
+const DEFAULTS = /*EDITMODE-BEGIN*/{
+  "sketchy": true,
+  "colorAccents": true,
+  "density": "comfortable"
+}/*EDITMODE-END*/;
+
+function App() {
+  const DC = window.DesignCanvas, DCS = window.DCSection, DCA = window.DCArtboard;
+  const TP = window.TweaksPanel, TSec = window.TweakSection, TTog = window.TweakToggle;
+  const [tweaks, setTweaks] = window.useTweaks(DEFAULTS);
+
+  // Toggle wobble filter by swapping CSS var on root
+  React.useEffect(() => {
+    const root = document.documentElement;
+    if (!tweaks.sketchy) {
+      root.style.setProperty('--wobble-display', 'none');
+      // Disable filter usage: override via CSS
+      let s = document.getElementById('__wobble_override');
+      if (!s) { s = document.createElement('style'); s.id = '__wobble_override'; document.head.appendChild(s); }
+      s.textContent = 'svg rect[filter], svg path[filter] { filter: none !important; }';
+    } else {
+      const s = document.getElementById('__wobble_override');
+      if (s) s.remove();
+    }
+  }, [tweaks.sketchy]);
+
+  React.useEffect(() => {
+    let s = document.getElementById('__color_override');
+    if (!tweaks.colorAccents) {
+      if (!s) { s = document.createElement('style'); s.id = '__color_override'; document.head.appendChild(s); }
+      // Desaturate course chips by removing their colored backgrounds
+      s.textContent = `
+        [data-course-chip] { background: transparent !important; border-color: #555 !important; }
+        [data-course-chip] span[data-dot] { background: #555 !important; }
+      `;
+    } else if (s) { s.remove(); }
+  }, [tweaks.colorAccents]);
+
+  return (
+    <>
+      <SketchDefs />
+      <DC
+        title="Deadline Tracker — Wireframes"
+        subtitle="5 directions per screen · sketchy low-fi · desktop 1280×800, mobile 360×720"
+      >
+        <DCS id="dashboard" title="① Dashboard — what's next?">
+          <DCA id="dash-a" label="A · Single hero — 'do this now'" width={1280} height={800}>
+            <DashA />
+          </DCA>
+          <DCA id="dash-b" label="B · Ranked list (urgency × effort)" width={1280} height={800}>
+            <DashB />
+          </DCA>
+          <DCA id="dash-c" label="C · Today / week / later buckets" width={1280} height={800}>
+            <DashC />
+          </DCA>
+          <DCA id="dash-d" label="D · Week agenda (7-day columns)" width={1280} height={800}>
+            <DashD />
+          </DCA>
+          <DCA id="dash-e" label="E · Pressure gauge (load chart)" width={1280} height={800}>
+            <DashE />
+          </DCA>
+        </DCS>
+
+        <DCS id="assignments" title="② Assignments — list views">
+          <DCA id="asg-a" label="A · Grouped by course" width={1280} height={800}>
+            <AssignA />
+          </DCA>
+          <DCA id="asg-b" label="B · Power-user table (filters + ⌘K)" width={1280} height={800}>
+            <AssignB />
+          </DCA>
+          <DCA id="asg-c" label="C · Gantt / swim-lane timeline" width={1280} height={800}>
+            <AssignC />
+          </DCA>
+          <DCA id="asg-d" label="D · Calendar month grid" width={1280} height={800}>
+            <AssignD />
+          </DCA>
+          <DCA id="asg-e" label="E · Kanban by type" width={1280} height={800}>
+            <AssignE />
+          </DCA>
+        </DCS>
+
+        <DCS id="applications" title="③ Applications — internship pipeline">
+          <DCA id="app-a" label="A · Kanban by stage" width={1280} height={800}>
+            <AppsA />
+          </DCA>
+          <DCA id="app-b" label="B · Timeline by next action" width={1280} height={800}>
+            <AppsB />
+          </DCA>
+          <DCA id="app-c" label="C · Compact table" width={1280} height={800}>
+            <AppsC />
+          </DCA>
+          <DCA id="app-d" label="D · Funnel + insights" width={1280} height={800}>
+            <AppsD />
+          </DCA>
+        </DCS>
+
+        <DCS id="quickadd" title="④ Quick-add interaction">
+          <DCA id="qa-flow" label="NLP parse — 4 states" width={1280} height={800}>
+            <QuickAddFlow />
+          </DCA>
+          <DCA id="qa-settings" label="Settings page" width={1280} height={800}>
+            <SettingsView />
+          </DCA>
+        </DCS>
+
+        <DCS id="mobile" title="⑤ Mobile PWA">
+          <DCA id="m-dash" label="Mobile · dashboard" width={360} height={720}>
+            <MobileDash />
+          </DCA>
+          <DCA id="m-add" label="Mobile · quick-add sheet" width={360} height={720}>
+            <MobileAdd />
+          </DCA>
+          <DCA id="m-list" label="Mobile · assignments list" width={360} height={720}>
+            <MobileList />
+          </DCA>
+        </DCS>
+      </DC>
+
+      <TP>
+        <TSec title="Style">
+          <TTog
+            label="sketchy (wobble)"
+            value={tweaks.sketchy}
+            onChange={(v) => setTweaks({ sketchy: v })}
+          />
+          <TTog
+            label="course color accents"
+            value={tweaks.colorAccents}
+            onChange={(v) => setTweaks({ colorAccents: v })}
+          />
+        </TSec>
+      </TP>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
