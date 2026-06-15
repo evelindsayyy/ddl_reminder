@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ensureUserPrefs } from '@/lib/prefs';
-import QuickAdd from '@/components/QuickAdd';
+import QuickAdd from '@/components/assignments/QuickAdd';
 import {
   AssignmentsView,
   type FilterMode,

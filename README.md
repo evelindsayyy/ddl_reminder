@@ -196,17 +196,13 @@ lib/
   supabase/             — SSR + browser clients + session middleware
 components/
   dashboard/            — DashboardBuckets, BucketColumn, AssignmentCard
-  assignments/          — GroupedByCourseList, CalendarMonthView, SwimLaneTimeline, AssignmentsView
+  assignments/          — GroupedByCourseList, CalendarMonthView, SwimLaneTimeline, AssignmentsView, QuickAdd
   applications/         — PipelineKanban, PipelineTimeline, PipelineFunnel, ApplicationsView, AddApplicationForm
+  settings/             — CoursesManager, SettingsForm, RemindersForm, IntegrationsPanel
+  layout/               — MobileBottomNav (md:hidden tabs), MobileAddBar (sticky add bar)
   ui/                   — CourseChip, TypePill, RelativeTime
-  QuickAdd.tsx          — debounced live-parse magic bar
-  MobileBottomNav.tsx   — md:hidden tab bar
-  MobileAddBar.tsx      — sticky + add deadline... bar
-  IntegrationsPanel.tsx — calendar feed / Canvas / Gradescope UI
-  RemindersForm.tsx     — chip editor for reminder offsets
-  CoursesManager.tsx    — color picker + CRUD
-  SettingsForm.tsx      — semester end date
 supabase/migrations/    — 0001 init · 0002 integrations · 0003 ics_token
+design/                 — wireframes (index.html + *.jsx), HANDOFF, DESIGN_TOKENS
 docs/                   — design specs
 ```
 

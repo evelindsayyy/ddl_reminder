@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import SignOutButton from './SignOutButton';
-import { MobileBottomNav } from '@/components/MobileBottomNav';
-import { MobileAddBar } from '@/components/MobileAddBar';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { MobileAddBar } from '@/components/layout/MobileAddBar';
 
 const NAV = [
   { href: '/', label: 'dashboard' },

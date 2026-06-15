@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ensureUserPrefs } from '@/lib/prefs';
-import CoursesManager, { type CourseRow } from '@/components/CoursesManager';
-import SettingsForm from '@/components/SettingsForm';
-import RemindersForm from '@/components/RemindersForm';
-import IntegrationsPanel from '@/components/IntegrationsPanel';
+import CoursesManager, { type CourseRow } from '@/components/settings/CoursesManager';
+import SettingsForm from '@/components/settings/SettingsForm';
+import RemindersForm from '@/components/settings/RemindersForm';
+import IntegrationsPanel from '@/components/settings/IntegrationsPanel';
 
 export const dynamic = 'force-dynamic';
 
