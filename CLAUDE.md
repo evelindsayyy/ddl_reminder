@@ -77,19 +77,28 @@ deadline-tracker/
 │   ├── email.ts                    # Resend wrapper
 │   ├── tz.ts                       # offset helpers
 │   └── ics.ts                      # .ics generation
-├── components/
-│   ├── QuickAdd.tsx                # the single-input magic bar
-│   ├── AssignmentCard.tsx
-│   ├── ApplicationCard.tsx
-│   └── ui/                         # shadcn
+├── components/                     # grouped by feature, not by type
+│   ├── dashboard/                  # DashboardBuckets, BucketColumn, AssignmentCard
+│   ├── assignments/                # AssignmentsView, QuickAdd (the magic bar), calendar/timeline
+│   ├── applications/               # ApplicationCard, pipeline (kanban/timeline/funnel)
+│   ├── settings/                   # CoursesManager, SettingsForm, RemindersForm, IntegrationsPanel
+│   ├── layout/                     # MobileBottomNav, MobileAddBar
+│   └── ui/                         # CourseChip, TypePill, RelativeTime
 ├── supabase/migrations/
 │   └── 0001_init.sql
+├── design/                         # wireframes (index.html + *.jsx), HANDOFF, DESIGN_TOKENS — not in the build
 ├── public/manifest.json            # PWA
 └── vercel.json                     # cron config
 ```
 
 **Route groups:** `(auth)` and `(app)` share layouts without nesting URLs.
 **Parser in `lib/`:** keeps it unit-testable and reusable (Telegram bot later).
+**Components by feature:** every component lives under a domain folder
+(`dashboard/`, `assignments/`, `applications/`, `settings/`, `layout/`) or
+`ui/` — nothing loose at the `components/` root. Put new components in the
+folder for the screen they serve.
+**Design artifacts:** the prototype wireframes and design docs live in
+`design/` and are never imported by the app. See `design/README.md`.
 
 ---
 
