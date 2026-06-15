@@ -206,7 +206,6 @@ components/
   RemindersForm.tsx     — chip editor for reminder offsets
   CoursesManager.tsx    — color picker + CRUD
   SettingsForm.tsx      — semester end date
-  AssignmentsList.tsx   — legacy flat list (kept; used by no current consumer)
 supabase/migrations/    — 0001 init · 0002 integrations · 0003 ics_token
 docs/                   — design specs
 ```
