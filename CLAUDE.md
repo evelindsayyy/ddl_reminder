@@ -417,7 +417,10 @@ npm run dev
 # Supabase migrations (use Supabase CLI or paste SQL in dashboard)
 supabase db push
 
-# Parser tests
+# Unit tests (assertion suites: recurrence, bucket, score)
+npm test
+
+# Parser smoke test (prints parses for the §7 cases)
 npx tsx lib/parser/parser.test.ts
 
 # Deploy

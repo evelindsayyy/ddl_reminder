@@ -118,6 +118,7 @@ npm run build        # production build
 npm run start        # serve the production build
 npm run lint         # next lint
 npm run typecheck    # tsc --noEmit
+npm test             # unit suites: recurrence + bucket + score (assertions)
 npm run test:parser  # smoke-test the NL parser against §7 cases
 ```
 
