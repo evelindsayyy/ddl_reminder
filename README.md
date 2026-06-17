@@ -209,7 +209,7 @@ components/
   settings/             — CoursesManager, SettingsForm, RemindersForm, IntegrationsPanel
   layout/               — MobileBottomNav (md:hidden tabs), MobileAddBar (sticky add bar)
   ui/                   — CourseChip, TypePill, RelativeTime
-supabase/migrations/    — 0001 init · 0002 integrations · 0003 ics_token
+supabase/migrations/    — 0001 init · 0002 integrations · 0003 ics_token · 0004 sync_status
 design/                 — wireframes (index.html + *.jsx), HANDOFF, DESIGN_TOKENS
 docs/                   — design specs
 ```
