@@ -52,6 +52,23 @@ export default async function DashboardPage() {
     courses: Array.isArray(row.courses) ? (row.courses[0] ?? null) : row.courses,
   }));
 
+  // Failed reminders for still-open assignments are real missed notifications:
+  // the daily sweeper only retries 'scheduled', never 'failed'. Count them so
+  // they're visible. Filtering on completed_at client-side keeps the banner
+  // self-clearing as items get done. Best-effort — never break the dashboard.
+  type FailedRow = {
+    assignment: { completed_at: string | null } | { completed_at: string | null }[] | null;
+  };
+  const failedReminders = await supabase
+    .from('reminders')
+    .select('id, assignment:assignment_id(completed_at)')
+    .eq('user_id', user.id)
+    .eq('status', 'failed');
+  const failedCount = ((failedReminders.data ?? []) as unknown as FailedRow[]).filter((r) => {
+    const a = Array.isArray(r.assignment) ? r.assignment[0] ?? null : r.assignment;
+    return a != null && a.completed_at == null;
+  }).length;
+
   const name = deriveName(user.email);
   const todayLabel = new Date().toLocaleDateString('en-US', {
     timeZone: prefs.timezone,
@@ -68,6 +85,13 @@ export default async function DashboardPage() {
           <span className="font-mono text-base font-normal text-ink-soft">— {todayLabel}</span>
         </h1>
       </header>
+
+      {failedCount > 0 ? (
+        <p className="rounded border border-urgent/40 bg-urgent/5 p-3 text-sm text-urgent">
+          ⚠ {failedCount} reminder {failedCount === 1 ? 'email' : 'emails'} failed to send for open
+          assignments and will not be retried — double-check those deadlines.
+        </p>
+      ) : null}
 
       {error ? (
         <p className="rounded border border-urgent/40 bg-urgent/5 p-3 text-sm text-urgent">
