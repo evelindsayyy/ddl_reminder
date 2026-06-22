@@ -29,6 +29,14 @@ interface KnownCourse {
 const DEBOUNCE_MS = 300;
 const WEEKDAY_NAME = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+// Weekday index (0=Sun..6=Sat) of an ISO instant as seen in the user's zone.
+// Used to seed the manual recurrence form from the parsed first occurrence.
+function weekdayInTz(iso: string, tz: string): number {
+  const short = new Date(iso).toLocaleDateString('en-US', { timeZone: tz, weekday: 'short' });
+  const idx = WEEKDAY_NAME.indexOf(short);
+  return idx === -1 ? 1 : idx;
+}
+
 export default function QuickAdd({
   timezone,
   knownCourses = [],
@@ -46,6 +54,11 @@ export default function QuickAdd({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [overrideUntil, setOverrideUntil] = useState<string>('');
+  // Manual recurrence editor — lets a series be set/corrected when the NL
+  // parser misses it. Seeded from detection (see effect below) but editable.
+  const [recurring, setRecurring] = useState(false);
+  const [weekdays, setWeekdays] = useState<number[]>([]);
+  const [repeatInterval, setRepeatInterval] = useState<1 | 2>(1);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -93,6 +106,44 @@ export default function QuickAdd({
     return () => clearTimeout(t);
   }, [input]);
 
+  // When the parser detects a series, seed the manual form from it so the
+  // controls reflect (and can correct) the detection. A parse that finds no
+  // recurrence leaves any manual toggle the user set intact.
+  useEffect(() => {
+    if (preview?.recurrence) {
+      setRecurring(true);
+      setWeekdays(preview.recurrence.byweekday);
+      setRepeatInterval(preview.recurrence.interval);
+    }
+  }, [preview?.recurrence]);
+
+  function toggleWeekday(day: number) {
+    setWeekdays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
+    );
+  }
+
+  function toggleRecurring() {
+    setRecurring((prev) => {
+      // Turning on with no weekday chosen yet: seed from the due date.
+      if (!prev && weekdays.length === 0 && preview?.dueAt) {
+        setWeekdays([weekdayInTz(preview.dueAt, timezone)]);
+      }
+      return !prev;
+    });
+  }
+
+  // The series actually saved: built from the manual editor (which is seeded
+  // from any NL detection). Null when recurrence is off or no weekday is set.
+  const effectiveRecurrence = useMemo<Recurrence | null>(() => {
+    if (!recurring || weekdays.length === 0) return null;
+    return {
+      interval: repeatInterval,
+      byweekday: [...weekdays].sort((a, b) => a - b),
+      until: overrideUntil || preview?.recurrence?.until || null,
+    };
+  }, [recurring, weekdays, repeatInterval, overrideUntil, preview?.recurrence?.until]);
+
   async function onSave() {
     if (!preview?.dueAt) {
       setError('No due date — add one and try again.');
@@ -101,13 +152,7 @@ export default function QuickAdd({
     setSubmitting(true);
     setError(null);
     try {
-      const recurrence =
-        preview.recurrence !== null
-          ? {
-              ...preview.recurrence,
-              until: overrideUntil || preview.recurrence.until || null,
-            }
-          : undefined;
+      const recurrence = effectiveRecurrence ?? undefined;
       const res = await fetch('/api/assignments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -127,6 +172,9 @@ export default function QuickAdd({
       setInput('');
       setPreview(null);
       setOverrideUntil('');
+      setRecurring(false);
+      setWeekdays([]);
+      setRepeatInterval(1);
       router.refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Unexpected error');
@@ -151,13 +199,13 @@ export default function QuickAdd({
 
   // Compute a human-readable series summary for the preview.
   const recurrenceSummary = useMemo(() => {
-    if (!preview?.recurrence || !preview.dueAt) return null;
-    const rec = preview.recurrence;
+    if (!effectiveRecurrence || !preview?.dueAt) return null;
+    const rec = effectiveRecurrence;
     const dayNames = rec.byweekday.map((d) => WEEKDAY_NAME[d]).join('/');
     const freq = rec.interval === 2 ? 'every other week' : 'weekly';
     const effectiveUntil = overrideUntil || rec.until || semesterEndDate || '(15 weeks)';
     return { text: `🔁 ${freq} on ${dayNames} · through ${effectiveUntil}`, freq, dayNames };
-  }, [preview, overrideUntil, semesterEndDate]);
+  }, [effectiveRecurrence, preview?.dueAt, overrideUntil, semesterEndDate]);
 
   return (
     <section className="rounded-lg border border-ink-faint/40 p-4">
@@ -219,30 +267,82 @@ export default function QuickAdd({
             <span className="ml-1 text-neutral-400">(first occurrence)</span>
           </div>
 
-          {recurrenceSummary ? (
+          {preview.dueAt ? (
             <div className="mt-2 rounded border border-indigo-200 bg-indigo-50 p-2 text-xs">
-              <div className="font-medium text-indigo-900">{recurrenceSummary.text}</div>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-indigo-800">
-                <label htmlFor="override_until" className="text-[11px]">
-                  Override end date:
-                </label>
-                <input
-                  id="override_until"
-                  type="date"
-                  value={overrideUntil}
-                  onChange={(e) => setOverrideUntil(e.target.value)}
-                  className="rounded border border-indigo-300 bg-white px-1.5 py-0.5 text-[11px]"
-                />
-                {overrideUntil ? (
-                  <button
-                    type="button"
-                    onClick={() => setOverrideUntil('')}
-                    className="text-[11px] underline"
-                  >
-                    clear
-                  </button>
-                ) : null}
-              </div>
+              <label className="flex items-center gap-2 text-indigo-900">
+                <input type="checkbox" checked={recurring} onChange={toggleRecurring} />
+                <span className="font-medium">🔁 Repeat weekly</span>
+              </label>
+
+              {recurring ? (
+                <div className="mt-2 space-y-2 text-indigo-800">
+                  <div className="flex flex-wrap gap-1">
+                    {WEEKDAY_NAME.map((name, idx) => {
+                      const on = weekdays.includes(idx);
+                      return (
+                        <button
+                          key={name}
+                          type="button"
+                          onClick={() => toggleWeekday(idx)}
+                          aria-pressed={on}
+                          className={
+                            on
+                              ? 'rounded bg-indigo-600 px-2 py-0.5 text-[11px] text-white'
+                              : 'rounded border border-indigo-300 bg-white px-2 py-0.5 text-[11px] text-indigo-700'
+                          }
+                        >
+                          {name}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="repeat_interval" className="text-[11px]">
+                      Frequency:
+                    </label>
+                    <select
+                      id="repeat_interval"
+                      value={repeatInterval}
+                      onChange={(e) => setRepeatInterval(Number(e.target.value) === 2 ? 2 : 1)}
+                      className="rounded border border-indigo-300 bg-white px-1.5 py-0.5 text-[11px]"
+                    >
+                      <option value={1}>weekly</option>
+                      <option value={2}>every other week</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label htmlFor="override_until" className="text-[11px]">
+                      End date:
+                    </label>
+                    <input
+                      id="override_until"
+                      type="date"
+                      value={overrideUntil}
+                      onChange={(e) => setOverrideUntil(e.target.value)}
+                      className="rounded border border-indigo-300 bg-white px-1.5 py-0.5 text-[11px]"
+                    />
+                    {overrideUntil ? (
+                      <button
+                        type="button"
+                        onClick={() => setOverrideUntil('')}
+                        className="text-[11px] underline"
+                      >
+                        clear
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {recurrenceSummary ? (
+                    <div className="font-medium text-indigo-900">{recurrenceSummary.text}</div>
+                  ) : (
+                    <div className="text-[11px] text-amber-700">
+                      Pick at least one weekday to save as a series.
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -263,7 +363,7 @@ export default function QuickAdd({
           disabled={!canSave}
           className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
         >
-          {submitting ? 'Saving…' : preview?.recurrence ? 'Save series' : 'Save'}
+          {submitting ? 'Saving…' : effectiveRecurrence ? 'Save series' : 'Save'}
         </button>
         <span className="text-xs text-neutral-500">
           {parsing ? 'parsing…' : 'tip: ⌘↵ to save'}
