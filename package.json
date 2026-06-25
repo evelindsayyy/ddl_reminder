@@ -15,7 +15,8 @@
     "test:ics": "tsx lib/ics.test.ts",
     "test:format": "tsx lib/format.test.ts",
     "test:prefs": "tsx lib/prefs.test.ts",
-    "test": "tsx lib/recurrence.test.ts && tsx lib/bucket.test.ts && tsx lib/score.test.ts && tsx lib/canvas.test.ts && tsx lib/ics.test.ts && tsx lib/format.test.ts && tsx lib/prefs.test.ts",
+    "test:colors": "tsx lib/colors.test.ts",
+    "test": "tsx lib/recurrence.test.ts && tsx lib/bucket.test.ts && tsx lib/score.test.ts && tsx lib/canvas.test.ts && tsx lib/ics.test.ts && tsx lib/format.test.ts && tsx lib/prefs.test.ts && tsx lib/colors.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
