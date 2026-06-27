@@ -18,7 +18,8 @@
     "test:colors": "tsx lib/colors.test.ts",
     "test:appstage": "tsx lib/applicationStage.test.ts",
     "test:tags": "tsx lib/tags.test.ts",
-    "test": "tsx lib/recurrence.test.ts && tsx lib/bucket.test.ts && tsx lib/score.test.ts && tsx lib/canvas.test.ts && tsx lib/ics.test.ts && tsx lib/format.test.ts && tsx lib/prefs.test.ts && tsx lib/colors.test.ts && tsx lib/applicationStage.test.ts && tsx lib/tags.test.ts",
+    "test:schemas": "tsx lib/schemas.test.ts",
+    "test": "tsx lib/recurrence.test.ts && tsx lib/bucket.test.ts && tsx lib/score.test.ts && tsx lib/canvas.test.ts && tsx lib/ics.test.ts && tsx lib/format.test.ts && tsx lib/prefs.test.ts && tsx lib/colors.test.ts && tsx lib/applicationStage.test.ts && tsx lib/tags.test.ts && tsx lib/schemas.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
