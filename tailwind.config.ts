@@ -1,8 +1,9 @@
 import type { Config } from 'tailwindcss';
 
-// Tokens come from DESIGN_TOKENS.md. Keep this file the single source of
-// design constants — components reference these utility classes, never
-// raw hex values, except for course-color arbitrary values.
+// Tokens come from DESIGN_TOKENS.md. This file maps token names to utility
+// classes; the color *values* live in app/globals.css as CSS variables (so
+// they can be re-themed for dark mode). Components reference these utility
+// classes, never raw hex values, except for course-color arbitrary values.
 const config: Config = {
   content: [
     './app/**/*.{ts,tsx}',
@@ -11,27 +12,33 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // Colors are backed by CSS variables (RGB channel triplets) defined in
+      // app/globals.css `:root`, referenced as `rgb(var(--token) / <alpha-value>)`
+      // so Tailwind's `/<alpha>` opacity modifiers (e.g. `bg-urgent/5`) keep
+      // working. Light values are unchanged from DESIGN_TOKENS.md; routing them
+      // through variables lets a future `.dark` block re-theme without touching
+      // components.
       colors: {
         // Brand
-        brand: '#6366f1',
+        brand: 'rgb(var(--color-brand) / <alpha-value>)',
         // Surfaces
-        bg: '#ffffff',
-        'bg-soft': '#fafaf7',
-        'bg-dim': '#f2f0e8',
+        bg: 'rgb(var(--color-bg) / <alpha-value>)',
+        'bg-soft': 'rgb(var(--color-bg-soft) / <alpha-value>)',
+        'bg-dim': 'rgb(var(--color-bg-dim) / <alpha-value>)',
         // Text
-        ink: '#1a1a1a',
-        'ink-soft': '#525252',
-        'ink-faint': '#a3a3a3',
+        ink: 'rgb(var(--color-ink) / <alpha-value>)',
+        'ink-soft': 'rgb(var(--color-ink-soft) / <alpha-value>)',
+        'ink-faint': 'rgb(var(--color-ink-faint) / <alpha-value>)',
         // Semantic
-        urgent: '#d94a38',
-        success: '#4a7c59',
-        info: '#3a6ea8',
+        urgent: 'rgb(var(--color-urgent) / <alpha-value>)',
+        success: 'rgb(var(--color-success) / <alpha-value>)',
+        info: 'rgb(var(--color-info) / <alpha-value>)',
         // Application stage tints (mirrored from DESIGN_TOKENS.md §Stage colors)
         stage: {
-          applied: '#525252',
-          interview: '#3a6ea8',
-          offer: '#4a7c59',
-          rejected: '#a3a3a3',
+          applied: 'rgb(var(--color-stage-applied) / <alpha-value>)',
+          interview: 'rgb(var(--color-stage-interview) / <alpha-value>)',
+          offer: 'rgb(var(--color-stage-offer) / <alpha-value>)',
+          rejected: 'rgb(var(--color-stage-rejected) / <alpha-value>)',
         },
       },
       fontFamily: {
