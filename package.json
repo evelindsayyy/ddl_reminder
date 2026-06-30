@@ -20,7 +20,8 @@
     "test:tags": "tsx lib/tags.test.ts",
     "test:schemas": "tsx lib/schemas.test.ts",
     "test:filter": "tsx lib/assignmentFilter.test.ts",
-    "test": "tsx lib/recurrence.test.ts && tsx lib/bucket.test.ts && tsx lib/score.test.ts && tsx lib/canvas.test.ts && tsx lib/ics.test.ts && tsx lib/format.test.ts && tsx lib/prefs.test.ts && tsx lib/colors.test.ts && tsx lib/applicationStage.test.ts && tsx lib/tags.test.ts && tsx lib/schemas.test.ts && tsx lib/assignmentFilter.test.ts",
+    "test:theme": "tsx lib/theme.test.ts",
+    "test": "tsx lib/recurrence.test.ts && tsx lib/bucket.test.ts && tsx lib/score.test.ts && tsx lib/canvas.test.ts && tsx lib/ics.test.ts && tsx lib/format.test.ts && tsx lib/prefs.test.ts && tsx lib/colors.test.ts && tsx lib/applicationStage.test.ts && tsx lib/tags.test.ts && tsx lib/schemas.test.ts && tsx lib/assignmentFilter.test.ts && tsx lib/theme.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

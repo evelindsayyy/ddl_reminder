@@ -75,12 +75,13 @@ deadline-tracker/
 │   ├── parser/parser.test.ts
 │   ├── reminders.ts                # QStash schedule/cancel
 │   ├── email.ts                    # Resend wrapper
+│   ├── theme.ts                    # dark-mode preference resolver (+ test)
 │   └── ics.ts                      # .ics generation
 ├── components/                     # grouped by feature, not by type
 │   ├── dashboard/                  # DashboardBuckets, BucketColumn, AssignmentCard
 │   ├── assignments/                # AssignmentsView, QuickAdd (the magic bar), calendar/timeline
 │   ├── applications/               # ApplicationCard, pipeline (kanban/timeline/funnel)
-│   ├── settings/                   # CoursesManager, SettingsForm, RemindersForm, IntegrationsPanel
+│   ├── settings/                   # CoursesManager, SettingsForm, RemindersForm, IntegrationsPanel, ThemeToggle
 │   ├── layout/                     # MobileBottomNav, MobileAddBar
 │   └── ui/                         # CourseChip, TypePill, RelativeTime
 ├── supabase/migrations/
@@ -476,8 +477,13 @@ Never commit `.env.local`. Vercel project settings store production values.
 
 ## 14. Open decisions / to revisit
 
-- **Dark mode?** Defer. Not a priority. shadcn supports it if I want to
-  add later.
+- **Dark mode?** Done. Class-based (`darkMode: 'class'`): a `.dark` block in
+  `app/globals.css` re-themes the palette CSS variables, a no-flash boot script
+  in `app/layout.tsx` sets the class before paint, and a `ThemeToggle` in
+  Settings (light/dark/system) persists the choice to `localStorage`. Default
+  follows the OS via `prefers-color-scheme`. Resolver logic + storage key live
+  in `lib/theme.ts` (unit-tested). Dark palette values may still need visual
+  tuning.
 - **Custom SMTP for auth email.** Supabase's built-in sender is rate-limited
   (~3/hr) and marked "not for production." Fine for personal use, but if I
   hit the limit, point Supabase Auth at Resend (same account I already use

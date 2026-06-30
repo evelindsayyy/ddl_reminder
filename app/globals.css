@@ -28,6 +28,33 @@
   --color-stage-rejected: 163 163 163; /* #a3a3a3 */
 }
 
+/*
+ * Dark theme — overrides the same tokens when `.dark` is on <html> (set by the
+ * no-flash boot script in app/layout.tsx). Surfaces invert to a warm charcoal
+ * (not pure black) to keep the hand-drawn paper feel; ink lightens to a warm
+ * off-white; the semantic + stage hues are lightened so they stay legible on a
+ * dark ground. Because components only reference the token utility classes,
+ * nothing else needs to change.
+ */
+.dark {
+  color-scheme: dark;
+
+  --color-brand: 129 140 248; /* #818cf8 — indigo-400, brighter on dark */
+  --color-bg: 28 27 24; /* #1c1b18 */
+  --color-bg-soft: 35 34 31; /* #23221f */
+  --color-bg-dim: 43 41 38; /* #2b2926 */
+  --color-ink: 237 237 234; /* #ededea */
+  --color-ink-soft: 181 179 173; /* #b5b3ad */
+  --color-ink-faint: 122 120 115; /* #7a7873 */
+  --color-urgent: 240 115 95; /* #f0735f */
+  --color-success: 111 174 128; /* #6fae80 */
+  --color-info: 111 163 214; /* #6fa3d6 */
+  --color-stage-applied: 138 136 130; /* #8a8882 */
+  --color-stage-interview: 111 163 214; /* #6fa3d6 */
+  --color-stage-offer: 111 174 128; /* #6fae80 */
+  --color-stage-rejected: 122 120 115; /* #7a7873 */
+}
+
 html,
 body {
   height: 100%;

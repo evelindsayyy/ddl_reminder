@@ -5,6 +5,7 @@ import CoursesManager, { type CourseRow } from '@/components/settings/CoursesMan
 import SettingsForm from '@/components/settings/SettingsForm';
 import RemindersForm from '@/components/settings/RemindersForm';
 import IntegrationsPanel from '@/components/settings/IntegrationsPanel';
+import ThemeToggle from '@/components/settings/ThemeToggle';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +59,10 @@ export default async function SettingsPage() {
       <div>
         <SettingsRow label="semester end" note="default 'until' for recurring assignments">
           <SettingsForm initialSemesterEndDate={prefs.semester_end_date} />
+        </SettingsRow>
+
+        <SettingsRow label="theme" note="light · dark · follow system; stored on this device">
+          <ThemeToggle />
         </SettingsRow>
 
         <SettingsRow

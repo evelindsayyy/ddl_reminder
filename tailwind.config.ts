@@ -10,6 +10,10 @@ const config: Config = {
     './components/**/*.{ts,tsx}',
     './lib/**/*.{ts,tsx}',
   ],
+  // Dark mode is class-based: a `.dark` on <html> swaps the palette variables
+  // (app/globals.css). The class is set by the no-flash boot script in
+  // app/layout.tsx from the stored/system preference (see lib/theme.ts).
+  darkMode: 'class',
   theme: {
     extend: {
       // Colors are backed by CSS variables (RGB channel triplets) defined in
