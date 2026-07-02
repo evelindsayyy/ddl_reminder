@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test:parser": "tsx lib/parser/parser.test.ts",
+    "test:parser-assert": "tsx lib/parser/parser.assert.test.ts",
     "test:recurrence": "tsx lib/recurrence.test.ts",
     "test:bucket": "tsx lib/bucket.test.ts",
     "test:score": "tsx lib/score.test.ts",
@@ -21,7 +22,7 @@
     "test:schemas": "tsx lib/schemas.test.ts",
     "test:filter": "tsx lib/assignmentFilter.test.ts",
     "test:theme": "tsx lib/theme.test.ts",
-    "test": "tsx lib/recurrence.test.ts && tsx lib/bucket.test.ts && tsx lib/score.test.ts && tsx lib/canvas.test.ts && tsx lib/ics.test.ts && tsx lib/format.test.ts && tsx lib/prefs.test.ts && tsx lib/colors.test.ts && tsx lib/applicationStage.test.ts && tsx lib/tags.test.ts && tsx lib/schemas.test.ts && tsx lib/assignmentFilter.test.ts && tsx lib/theme.test.ts",
+    "test": "tsx lib/parser/parser.assert.test.ts && tsx lib/recurrence.test.ts && tsx lib/bucket.test.ts && tsx lib/score.test.ts && tsx lib/canvas.test.ts && tsx lib/ics.test.ts && tsx lib/format.test.ts && tsx lib/prefs.test.ts && tsx lib/colors.test.ts && tsx lib/applicationStage.test.ts && tsx lib/tags.test.ts && tsx lib/schemas.test.ts && tsx lib/assignmentFilter.test.ts && tsx lib/theme.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -72,7 +72,8 @@ deadline-tracker/
 ├── lib/
 │   ├── supabase/{client,server}.ts
 │   ├── parser/index.ts             # parseAssignment() + per-date TZ offset (§5)
-│   ├── parser/parser.test.ts
+│   ├── parser/parser.test.ts       # print-only smoke test (§7 cases)
+│   ├── parser/parser.assert.test.ts # machine-checked §7 contract (in `npm test`)
 │   ├── reminders.ts                # QStash schedule/cancel
 │   ├── email.ts                    # Resend wrapper
 │   ├── theme.ts                    # dark-mode preference resolver (+ test)
@@ -420,10 +421,11 @@ npm run dev
 # Supabase migrations (use Supabase CLI or paste SQL in dashboard)
 supabase db push
 
-# Unit tests (assertion suites: recurrence, bucket, score)
+# Unit tests (assertion suites: parser §7 contract, recurrence, bucket, score, …)
 npm test
 
-# Parser smoke test (prints parses for the §7 cases)
+# Parser smoke test (prints parses for the §7 cases — eyeballing only;
+# the machine-checked companion is lib/parser/parser.assert.test.ts, in `npm test`)
 npx tsx lib/parser/parser.test.ts
 
 # Deploy
