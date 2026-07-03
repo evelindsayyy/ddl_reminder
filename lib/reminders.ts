@@ -10,6 +10,7 @@
 
 import { Client as QstashClient } from '@upstash/qstash';
 import { createClient as createAdmin } from '@supabase/supabase-js';
+import { computeReminderFireTimes } from './reminderSchedule';
 
 interface ScheduleArgs {
   userId: string;
@@ -76,20 +77,20 @@ export async function scheduleAssignmentReminders(args: ScheduleArgs): Promise<v
     .eq('user_id', args.userId)
     .eq('assignment_id', args.assignmentId);
 
-  // Now schedule fresh.
-  const due = new Date(args.dueAtIso).getTime();
-  const now = Date.now();
-  for (const offset of args.reminderOffsetsHours) {
-    const fireAt = due - offset * 60 * 60 * 1000;
-    if (fireAt <= now) continue; // skip past offsets
-
+  // Now schedule fresh. Timing math lives in a pure, unit-tested helper.
+  const planned = computeReminderFireTimes(
+    args.dueAtIso,
+    args.reminderOffsetsHours,
+    Date.now()
+  );
+  for (const { offsetHours, fireAtMs, fireAtIso } of planned) {
     let messageId: string | null = null;
     if (qs) {
       try {
         const res = await qs.publishJSON({
           url: `${args.appUrl}/api/webhooks/reminder`,
-          body: { assignmentId: args.assignmentId, offsetHours: offset },
-          notBefore: Math.floor(fireAt / 1000),
+          body: { assignmentId: args.assignmentId, offsetHours },
+          notBefore: Math.floor(fireAtMs / 1000),
         });
         messageId = res.messageId;
       } catch {
@@ -100,7 +101,7 @@ export async function scheduleAssignmentReminders(args: ScheduleArgs): Promise<v
     await a.from('reminders').insert({
       user_id: args.userId,
       assignment_id: args.assignmentId,
-      fire_at: new Date(fireAt).toISOString(),
+      fire_at: fireAtIso,
       status: 'scheduled',
       qstash_message_id: messageId,
     });
