@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient as createAdmin, type SupabaseClient } from '@supabase/supabase-js';
 import { syncCanvasForUser } from '@/lib/canvas';
 import { digestEmailFor, reminderEmailFor, sendEmail } from '@/lib/email';
+import { startOfDayInZone } from '@/lib/datetime';
 
 // Vercel Cron → here, once per day. Per CLAUDE.md §6:
 //
@@ -194,44 +195,4 @@ async function runDailyDigest(
     else skipped++;
   }
   return { sent, skipped, users: (users.data ?? []).length };
-}
-
-// Returns the UTC instant corresponding to "00:00:00 today" in the given tz.
-function startOfDayInZone(now: Date, tz: string): Date {
-  // Use Intl to extract Y-M-D in the zone.
-  const fmt = new Intl.DateTimeFormat('en-CA', {
-    timeZone: tz,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  const ymd = fmt.format(now); // YYYY-MM-DD
-  // Build a UTC midnight for that date, then offset by the zone's offset to
-  // express the same calendar moment back to UTC.
-  const localMidnight = new Date(`${ymd}T00:00:00Z`);
-  // Compute the offset between localMidnight (interpreted as UTC) and what
-  // the zone calls midnight on that date.
-  const tzMidnightStr = new Intl.DateTimeFormat('en-CA', {
-    timeZone: tz,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }).format(localMidnight);
-  // Parse "YYYY-MM-DD, HH:MM:SS" or similar — en-CA uses ISO-style.
-  const m = tzMidnightStr.match(/(\d{4})-(\d{2})-(\d{2}),?\s*(\d{2}):(\d{2}):(\d{2})/);
-  if (!m) return localMidnight;
-  const y = Number(m[1]);
-  const mo = Number(m[2]);
-  const d = Number(m[3]);
-  const h = Number(m[4]);
-  const mi = Number(m[5]);
-  const s = Number(m[6]);
-  // Difference between what UTC says and what zone-local says, in ms.
-  const fakeAsUtc = Date.UTC(y, mo - 1, d, h, mi, s);
-  const offsetMs = fakeAsUtc - localMidnight.getTime();
-  return new Date(localMidnight.getTime() - offsetMs);
 }
