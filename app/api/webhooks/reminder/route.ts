@@ -12,7 +12,7 @@ import { reminderEmailFor, sendEmail } from '@/lib/email';
 export async function POST(request: NextRequest) {
   const bodyText = await request.text();
 
-  if (!verifySignature(request, bodyText)) {
+  if (!(await verifySignature(request, bodyText))) {
     return NextResponse.json({ error: 'invalid_signature' }, { status: 401 });
   }
 
@@ -72,21 +72,45 @@ export async function POST(request: NextRequest) {
   });
   const send = await sendEmail({ to: prefs.email, ...email });
 
-  // Mark the matching `reminders` row as sent. We don't know which row
-  // exactly (multiple offsets per assignment); resolve via fire_at near now.
+  // Mark the delivered `reminders` row. The payload's `offsetHours` pins the
+  // exact fire_at (due_at − offset), so we target only the row that actually
+  // fired — flipping every overdue sibling would let a later, still-pending
+  // offset be marked 'sent' and never retried by the sweeper. Fall back to the
+  // near-now sweep only for legacy payloads that carry no offsetHours.
   const now = new Date();
-  await admin
-    .from('reminders')
-    .update({ status: send.ok ? 'sent' : 'failed', sent_at: now.toISOString() })
-    .eq('assignment_id', a.id)
-    .eq('status', 'scheduled')
-    .lte('fire_at', now.toISOString());
+  const newStatus = send.ok ? 'sent' : 'failed';
+  if (typeof payload.offsetHours === 'number') {
+    const fireAtIso = new Date(
+      new Date(a.due_at).getTime() - payload.offsetHours * 60 * 60 * 1000
+    ).toISOString();
+    await admin
+      .from('reminders')
+      .update({ status: newStatus, sent_at: now.toISOString() })
+      .eq('assignment_id', a.id)
+      .eq('status', 'scheduled')
+      .eq('fire_at', fireAtIso);
+  } else {
+    // Legacy payload with no offsetHours — fall back to the near-now sweep.
+    await admin
+      .from('reminders')
+      .update({ status: newStatus, sent_at: now.toISOString() })
+      .eq('assignment_id', a.id)
+      .eq('status', 'scheduled')
+      .lte('fire_at', now.toISOString());
+  }
 
   return NextResponse.json({ ok: send.ok, skipped: send.skipped, error: send.error });
 }
 
-function verifySignature(request: NextRequest, body: string): boolean {
-  if (process.env.INSECURE_REMINDER_WEBHOOK === '1') return true;
+async function verifySignature(request: NextRequest, body: string): Promise<boolean> {
+  // Dev-only escape hatch for curl-based local testing. Never honored in
+  // production — a forged request here sends real email via the service role.
+  if (
+    process.env.INSECURE_REMINDER_WEBHOOK === '1' &&
+    process.env.NODE_ENV !== 'production'
+  ) {
+    return true;
+  }
 
   const current = process.env.QSTASH_CURRENT_SIGNING_KEY;
   const next = process.env.QSTASH_NEXT_SIGNING_KEY;
@@ -94,22 +118,11 @@ function verifySignature(request: NextRequest, body: string): boolean {
   const signature = request.headers.get('upstash-signature');
   if (!signature) return false;
   const receiver = new Receiver({ currentSigningKey: current, nextSigningKey: next });
-  // Receiver.verify is async in newer versions; keep this best-effort
-  // synchronous-ish here. Failing closed if anything throws.
+  // Receiver.verify is async (returns a Promise in every @upstash/qstash 2.x
+  // release); it throws SignatureError on a bad signature. Fail closed.
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = (receiver as any).verify({
-      signature,
-      body,
-      url: request.url,
-    });
-    if (result instanceof Promise) {
-      // We can't await in a non-async function; the verify in current
-      // @upstash/qstash is sync for this signature. If it returns a
-      // Promise we deliberately fail closed.
-      return false;
-    }
-    return Boolean(result);
+    await receiver.verify({ signature, body, url: request.url });
+    return true;
   } catch {
     return false;
   }

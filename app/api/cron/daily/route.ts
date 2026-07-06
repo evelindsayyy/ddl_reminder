@@ -1,8 +1,21 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient as createAdmin, type SupabaseClient } from '@supabase/supabase-js';
 import { syncCanvasForUser } from '@/lib/canvas';
 import { digestEmailFor, reminderEmailFor, sendEmail } from '@/lib/email';
 import { startOfDayInZone } from '@/lib/datetime';
+import { scheduleAssignmentReminders } from '@/lib/reminders';
+
+const DEFAULT_OFFSETS = [168, 48, 12];
+
+// Constant-time string compare. Hashing both sides to a fixed 32-byte digest
+// first keeps the compared buffers equal-length (timingSafeEqual throws on a
+// length mismatch and the mismatch itself would leak length).
+function timingSafeEqualStr(a: string, b: string): boolean {
+  const ha = createHash('sha256').update(a).digest();
+  const hb = createHash('sha256').update(b).digest();
+  return timingSafeEqual(ha, hb);
+}
 
 // Vercel Cron → here, once per day. Per CLAUDE.md §6:
 //
@@ -24,7 +37,7 @@ async function handle(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
   if (!secret) return NextResponse.json({ error: 'cron_secret_unset' }, { status: 500 });
   const authz = request.headers.get('authorization') ?? '';
-  if (authz !== `Bearer ${secret}`) {
+  if (!timingSafeEqualStr(authz, `Bearer ${secret}`)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
@@ -45,6 +58,12 @@ async function handle(request: NextRequest) {
 
   // 2) Canvas import per user
   out.canvas = await runCanvasSync(admin);
+
+  // 2b) Backfill — open future assignments with no reminder rows at all
+  //     (e.g. Canvas/Gradescope imports, which insert rows directly and never
+  //     call the scheduler). Runs after the Canvas import so rows created this
+  //     run get scheduled the same day. Per CLAUDE.md §6 layer 2.
+  out.backfill = await runReminderBackfill(admin, appUrl);
 
   // 3) Daily digest
   out.digest = await runDailyDigest(admin, appUrl);
@@ -124,6 +143,71 @@ async function runSweeper(
     }
   }
   return { sent, failed, skipped, total: (due.data ?? []).length };
+}
+
+// Schedule reminders for open, future-due assignments that have NO reminder
+// rows yet. The interactive create/update routes call the scheduler directly,
+// but the Canvas and Gradescope importers insert assignment rows without it —
+// so without this pass those deadlines get zero reminders (CLAUDE.md §6, the
+// "something got dropped → re-schedule" safety net). `scheduleAssignmentReminders`
+// skips any offset already in the past, so this never creates a due-now row.
+async function runReminderBackfill(
+  admin: SupabaseClient,
+  appUrl: string
+): Promise<Record<string, unknown>> {
+  const nowIso = new Date().toISOString();
+  const open = await admin
+    .from('assignments')
+    .select('id, user_id, due_at')
+    .is('completed_at', null)
+    .gt('due_at', nowIso);
+  if (open.error) return { error: open.error.message };
+
+  const rows = (open.data ?? []) as Array<{ id: string; user_id: string; due_at: string }>;
+  if (rows.length === 0) return { scheduled: 0, checked: 0 };
+
+  // One query for all assignments that already have any reminder row.
+  const existing = await admin
+    .from('reminders')
+    .select('assignment_id')
+    .in(
+      'assignment_id',
+      rows.map((r) => r.id)
+    );
+  if (existing.error) return { error: existing.error.message };
+  const haveReminders = new Set(
+    (existing.data ?? []).map((r) => (r as { assignment_id: string }).assignment_id)
+  );
+
+  const missing = rows.filter((r) => !haveReminders.has(r.id));
+  if (missing.length === 0) return { scheduled: 0, checked: rows.length, missing: 0 };
+
+  // Per-user reminder offsets (fall back to the schema default).
+  const userIds = Array.from(new Set(missing.map((r) => r.user_id)));
+  const prefs = await admin
+    .from('user_prefs')
+    .select('user_id, reminder_offsets_hours')
+    .in('user_id', userIds);
+  const offsetsByUser = new Map<string, number[]>();
+  for (const p of (prefs.data ?? []) as Array<{
+    user_id: string;
+    reminder_offsets_hours: number[] | null;
+  }>) {
+    offsetsByUser.set(p.user_id, p.reminder_offsets_hours ?? DEFAULT_OFFSETS);
+  }
+
+  let scheduled = 0;
+  for (const r of missing) {
+    await scheduleAssignmentReminders({
+      userId: r.user_id,
+      assignmentId: r.id,
+      dueAtIso: r.due_at,
+      reminderOffsetsHours: offsetsByUser.get(r.user_id) ?? DEFAULT_OFFSETS,
+      appUrl,
+    });
+    scheduled++;
+  }
+  return { scheduled, checked: rows.length, missing: missing.length };
 }
 
 async function runCanvasSync(

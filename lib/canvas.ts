@@ -12,6 +12,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { pickColorForNewCourse } from '@/lib/colors';
+import { checkFetchableUrl } from '@/lib/urlGuard';
 
 export interface CanvasEvent {
   uid: string;
@@ -194,6 +195,14 @@ async function performCanvasSync(
   userId: string,
   canvasIcsUrl: string
 ): Promise<SyncSummary> {
+  // SSRF guard: this URL is user-supplied and fetched with the service-role
+  // client. Reject non-HTTPS, credentialed, or internal/private-IP targets
+  // before making any request.
+  const guard = checkFetchableUrl(canvasIcsUrl);
+  if (!guard.ok) {
+    return { fetched: 0, inserted: 0, updated: 0, skipped: 0, error: `blocked_url:${guard.reason}` };
+  }
+
   let body: string;
   try {
     const ctrl = new AbortController();
@@ -202,6 +211,7 @@ async function performCanvasSync(
       headers: { 'User-Agent': 'DDLReminder-Canvas-Sync/1.0' },
       signal: ctrl.signal,
       cache: 'no-store',
+      redirect: 'error', // don't follow redirects to an internal target
     });
     clearTimeout(t);
     if (!res.ok) return { fetched: 0, inserted: 0, updated: 0, skipped: 0, error: `fetch ${res.status}` };

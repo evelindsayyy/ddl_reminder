@@ -231,12 +231,17 @@ When an assignment is created or updated:
 5. Store the returned `messageId` in the `reminders` row.
 
 ### Layer 2: daily reconciliation (Vercel Cron)
-Runs once per day at ~07:00 user-local:
-- Find any `reminders` with `status = 'scheduled'` and `fire_at < now()` —
-  QStash missed them somehow. Send them now, mark `sent`.
-- Find any open assignments due in the next 24h that have no scheduled
-  12h reminder — something got dropped. Re-schedule.
-- Send the daily digest email ("Here's what's on your plate today").
+Runs once per day at ~07:00 user-local (`app/api/cron/daily/route.ts`):
+- **Sweeper** — find any `reminders` with `status = 'scheduled'` and
+  `fire_at < now()` (QStash missed them somehow). Send them now, mark `sent`.
+- **Backfill** — find any open, future-due assignment with *no* `reminders`
+  rows at all and schedule them (`runReminderBackfill`). This is the safety
+  net for the **Canvas/Gradescope importers**, which insert `assignments`
+  rows directly and never call `scheduleAssignmentReminders` — without this
+  pass, imported deadlines would get zero reminders. Runs after the Canvas
+  import so rows created in the same run are scheduled the same day.
+- **Digest** — send the daily digest email ("Here's what's on your plate
+  today").
 
 This belt-and-suspenders setup means even if QStash goes down, I don't
 miss a deadline — the daily sweeper catches it.
@@ -244,7 +249,12 @@ miss a deadline — the daily sweeper catches it.
 ### Email auth
 QStash calls `/api/webhooks/reminder` with a signed payload. Verify the
 signature using `@upstash/qstash`'s `Receiver` — otherwise anyone who
-guesses the URL can trigger emails.
+guesses the URL can trigger emails. **`Receiver.verify()` is async — it must
+be `await`ed** (it returns a Promise in every 2.x release and throws on a bad
+signature; a non-awaited call silently rejects every request). The webhook
+payload carries `offsetHours`, so the "mark sent" update targets the one
+`reminders` row whose `fire_at` matches `due_at − offsetHours` rather than
+every overdue sibling.
 
 Vercel cron calls `/api/cron/daily` with an `Authorization: Bearer
 $CRON_SECRET` header. Verify it; reject otherwise.
@@ -490,11 +500,15 @@ Never commit `.env.local`. Vercel project settings store production values.
   (~3/hr) and marked "not for production." Fine for personal use, but if I
   hit the limit, point Supabase Auth at Resend (same account I already use
   for reminder emails).
-- **Recurring assignments.** Weekly problem sets, standing meetings. Skip
-  for v1 — most things are one-off. Revisit in week 3 if I find myself
-  re-entering the same thing.
-- **Time estimates → learning curve.** Log `estimated_hours` vs
-  `actual_hours`. Not in v1; add when I have 2+ weeks of data.
+- **Recurring assignments.** Done. NL detection (`detectRecurrence`, a step in
+  the §7 parser) plus a manual 🔁 editor in `QuickAdd` (weekday checkboxes +
+  interval + until). Create/expand lives in the assignments create route +
+  `lib/recurrence.ts`; series-wide delete and edit (`?scope=one|series`) live in
+  `app/api/assignments/[id]/route.ts`.
+- **Time estimates → learning curve.** Logging is done — `estimated_hours` and
+  `actual_hours` are captured (card edit form) and displayed. The
+  *estimate-vs-actual analytics* view is still deferred until I have 2+ weeks of
+  data.
 - **Telegram bot for entry.** Strongly tempting. Defer until web app
   is solid — one surface at a time.
 - **Push notifications.** Requires a service worker and VAPID keys.

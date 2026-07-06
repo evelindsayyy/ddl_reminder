@@ -136,6 +136,21 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     }
 
     const nowIso = new Date().toISOString();
+
+    // Cancel each future occurrence's QStash messages BEFORE deleting the rows.
+    // `reminders.assignment_id` is ON DELETE CASCADE, so once the assignment
+    // rows are gone the reminder rows (and their qstash_message_id) vanish too,
+    // leaving the scheduled QStash message to fire uselessly later.
+    const futureRows = await supabase
+      .from('assignments')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('recurrence_group_id', row.data.recurrence_group_id)
+      .gt('due_at', nowIso);
+    for (const r of futureRows.data ?? []) {
+      await cancelAssignmentReminders(user.id, r.id);
+    }
+
     const { error, count } = await supabase
       .from('assignments')
       .delete({ count: 'exact' })
@@ -147,7 +162,8 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ ok: true, deleted: count ?? 0 });
   }
 
-  // scope === 'one'
+  // scope === 'one'. Cancel before deleting — see the series note above.
+  await cancelAssignmentReminders(user.id, params.id);
   const { error } = await supabase
     .from('assignments')
     .delete()
@@ -155,6 +171,5 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     .eq('user_id', user.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  void cancelAssignmentReminders(user.id, params.id);
   return NextResponse.json({ ok: true });
 }
