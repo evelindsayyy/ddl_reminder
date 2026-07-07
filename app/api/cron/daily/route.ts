@@ -2,7 +2,12 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient as createAdmin, type SupabaseClient } from '@supabase/supabase-js';
 import { syncCanvasForUser } from '@/lib/canvas';
-import { digestEmailFor, reminderEmailFor, sendEmail } from '@/lib/email';
+import {
+  applicationReminderEmailFor,
+  digestEmailFor,
+  reminderEmailFor,
+  sendEmail,
+} from '@/lib/email';
 import { startOfDayInZone } from '@/lib/datetime';
 import { scheduleAssignmentReminders } from '@/lib/reminders';
 
@@ -80,7 +85,9 @@ async function runSweeper(
   const due = await admin
     .from('reminders')
     .select(
-      'id, user_id, assignment_id, fire_at, assignment:assignment_id(id, title, due_at, completed_at, type, courses(code), user_prefs:user_id(email, timezone))'
+      'id, user_id, assignment_id, application_id, fire_at, ' +
+        'assignment:assignment_id(id, title, due_at, completed_at, type, courses(code), user_prefs:user_id(email, timezone)), ' +
+        'application:application_id(id, company, role, stage, next_action, next_action_at, user_prefs:user_id(email, timezone))'
     )
     .eq('status', 'scheduled')
     .lte('fire_at', nowIso);
@@ -90,47 +97,101 @@ async function runSweeper(
   let sent = 0;
   let failed = 0;
   let skipped = 0;
+  type PrefsJoin = { email: string; timezone: string } | { email: string; timezone: string }[] | null;
   type Joined = {
     id: string;
     user_id: string;
-    assignment_id: string;
+    assignment_id: string | null;
+    application_id: string | null;
     fire_at: string;
     assignment: {
       title: string;
       due_at: string;
       completed_at: string | null;
       courses: { code: string } | { code: string }[] | null;
-      user_prefs: { email: string; timezone: string } | { email: string; timezone: string }[] | null;
+      user_prefs: PrefsJoin;
+    } | null;
+    application: {
+      company: string;
+      role: string;
+      stage: string;
+      next_action: string | null;
+      next_action_at: string | null;
+      user_prefs: PrefsJoin;
     } | null;
   };
+  const firstPrefs = (p: PrefsJoin) => (Array.isArray(p) ? p[0] ?? null : p);
+  const TERMINAL_STAGES = ['offer', 'rejected', 'withdrawn'];
 
   for (const r of (due.data ?? []) as unknown as Joined[]) {
-    const a = r.assignment;
-    if (!a) {
+    // Compose the email for whichever parent this reminder row points at
+    // (exactly one is set, per the table's CHECK constraint).
+    let to: string | null = null;
+    let email: { subject: string; text: string; html: string } | null = null;
+
+    if (r.assignment_id) {
+      const a = r.assignment;
+      if (!a) {
+        skipped++;
+        continue;
+      }
+      if (a.completed_at) {
+        skipped++;
+        await admin.from('reminders').update({ status: 'cancelled' }).eq('id', r.id);
+        continue;
+      }
+      const courseCode = Array.isArray(a.courses) ? a.courses[0]?.code ?? null : a.courses?.code ?? null;
+      const prefs = firstPrefs(a.user_prefs);
+      if (!prefs) {
+        skipped++;
+        continue;
+      }
+      const hoursUntilDue = (new Date(a.due_at).getTime() - Date.now()) / (60 * 60 * 1000);
+      to = prefs.email;
+      email = reminderEmailFor({
+        appUrl,
+        title: a.title,
+        courseCode,
+        dueAtIso: a.due_at,
+        timezone: prefs.timezone,
+        hoursUntilDue,
+      });
+    } else if (r.application_id) {
+      const app = r.application;
+      if (!app) {
+        skipped++;
+        continue;
+      }
+      // Terminal stage or cleared next action → stale, cancel like a
+      // completed assignment.
+      if (TERMINAL_STAGES.includes(app.stage) || !app.next_action_at) {
+        skipped++;
+        await admin.from('reminders').update({ status: 'cancelled' }).eq('id', r.id);
+        continue;
+      }
+      const prefs = firstPrefs(app.user_prefs);
+      if (!prefs) {
+        skipped++;
+        continue;
+      }
+      const hoursUntil =
+        (new Date(app.next_action_at).getTime() - Date.now()) / (60 * 60 * 1000);
+      to = prefs.email;
+      email = applicationReminderEmailFor({
+        appUrl,
+        company: app.company,
+        role: app.role,
+        nextAction: app.next_action,
+        nextActionAtIso: app.next_action_at,
+        timezone: prefs.timezone,
+        hoursUntil,
+      });
+    } else {
       skipped++;
       continue;
     }
-    if (a.completed_at) {
-      skipped++;
-      await admin.from('reminders').update({ status: 'cancelled' }).eq('id', r.id);
-      continue;
-    }
-    const courseCode = Array.isArray(a.courses) ? a.courses[0]?.code ?? null : a.courses?.code ?? null;
-    const prefs = Array.isArray(a.user_prefs) ? a.user_prefs[0] ?? null : a.user_prefs;
-    if (!prefs) {
-      skipped++;
-      continue;
-    }
-    const hoursUntilDue = (new Date(a.due_at).getTime() - Date.now()) / (60 * 60 * 1000);
-    const email = reminderEmailFor({
-      appUrl,
-      title: a.title,
-      courseCode,
-      dueAtIso: a.due_at,
-      timezone: prefs.timezone,
-      hoursUntilDue,
-    });
-    const res = await sendEmail({ to: prefs.email, ...email });
+
+    const res = await sendEmail({ to, ...email });
     if (res.ok) {
       sent++;
       await admin

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { Receiver } from '@upstash/qstash';
-import { createClient as createAdmin } from '@supabase/supabase-js';
-import { reminderEmailFor, sendEmail } from '@/lib/email';
+import { createClient as createAdmin, type SupabaseClient } from '@supabase/supabase-js';
+import { applicationReminderEmailFor, reminderEmailFor, sendEmail } from '@/lib/email';
 
 // QStash → here. Verify the signature, then look up the assignment +
 // recipient and send the reminder email. Mark the reminders row 'sent'.
@@ -16,20 +16,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'invalid_signature' }, { status: 401 });
   }
 
-  let payload: { assignmentId?: string; offsetHours?: number };
+  let payload: { assignmentId?: string; applicationId?: string; offsetHours?: number };
   try {
     payload = JSON.parse(bodyText) as typeof payload;
   } catch {
     return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
   }
-  if (!payload.assignmentId) return NextResponse.json({ error: 'missing_assignmentId' }, { status: 400 });
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) {
     return NextResponse.json({ error: 'server_misconfigured' }, { status: 500 });
   }
   const admin = createAdmin(supabaseUrl, serviceKey);
+
+  if (payload.applicationId) {
+    return handleApplicationReminder(admin, payload.applicationId, payload.offsetHours);
+  }
+  if (!payload.assignmentId) {
+    return NextResponse.json({ error: 'missing_target_id' }, { status: 400 });
+  }
 
   const fetched = await admin
     .from('assignments')
@@ -95,6 +100,89 @@ export async function POST(request: NextRequest) {
       .from('reminders')
       .update({ status: newStatus, sent_at: now.toISOString() })
       .eq('assignment_id', a.id)
+      .eq('status', 'scheduled')
+      .lte('fire_at', now.toISOString());
+  }
+
+  return NextResponse.json({ ok: send.ok, skipped: send.skipped, error: send.error });
+}
+
+// Application reminders: same delivery contract as assignments, keyed on
+// next_action_at instead of due_at. Terminal stages (offer/rejected/withdrawn)
+// skip silently — same semantics as a completed assignment.
+async function handleApplicationReminder(
+  admin: SupabaseClient,
+  applicationId: string,
+  offsetHours: number | undefined
+) {
+  const fetched = await admin
+    .from('applications')
+    .select(
+      'id, user_id, company, role, stage, next_action, next_action_at, user_prefs:user_id(email, timezone)'
+    )
+    .eq('id', applicationId)
+    .maybeSingle();
+  if (fetched.error || !fetched.data) {
+    return NextResponse.json({ error: 'application_not_found' }, { status: 404 });
+  }
+  type AppWithJoin = {
+    id: string;
+    company: string;
+    role: string;
+    stage: string;
+    next_action: string | null;
+    next_action_at: string | null;
+    user_prefs: { email: string; timezone: string } | { email: string; timezone: string }[] | null;
+  };
+  const app = fetched.data as unknown as AppWithJoin;
+  const prefs = Array.isArray(app.user_prefs) ? app.user_prefs[0] ?? null : app.user_prefs;
+
+  const TERMINAL_STAGES = ['offer', 'rejected', 'withdrawn'];
+  if (TERMINAL_STAGES.includes(app.stage) || !app.next_action_at) {
+    // Stale message (stage moved on, or next action cleared) — skip silently
+    // and cancel any leftover scheduled rows so the sweeper won't resend.
+    await admin
+      .from('reminders')
+      .update({ status: 'cancelled' })
+      .eq('application_id', app.id)
+      .eq('status', 'scheduled');
+    return NextResponse.json({ ok: true, skipped: 'stale' });
+  }
+  if (!prefs) return NextResponse.json({ error: 'no_user_prefs' }, { status: 500 });
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  const hoursUntil =
+    (new Date(app.next_action_at).getTime() - Date.now()) / (60 * 60 * 1000);
+  const email = applicationReminderEmailFor({
+    appUrl,
+    company: app.company,
+    role: app.role,
+    nextAction: app.next_action,
+    nextActionAtIso: app.next_action_at,
+    timezone: prefs.timezone,
+    hoursUntil,
+  });
+  const send = await sendEmail({ to: prefs.email, ...email });
+
+  // Mark the delivered row — exact fire_at when the payload pins the offset,
+  // near-now sweep otherwise (same policy as assignments).
+  const now = new Date();
+  const newStatus = send.ok ? 'sent' : 'failed';
+  if (typeof offsetHours === 'number') {
+    const fireAtIso = new Date(
+      new Date(app.next_action_at).getTime() - offsetHours * 60 * 60 * 1000
+    ).toISOString();
+    await admin
+      .from('reminders')
+      .update({ status: newStatus, sent_at: now.toISOString() })
+      .eq('application_id', app.id)
+      .eq('status', 'scheduled')
+      .eq('fire_at', fireAtIso);
+  } else {
+    await admin
+      .from('reminders')
+      .update({ status: newStatus, sent_at: now.toISOString() })
+      .eq('application_id', app.id)
       .eq('status', 'scheduled')
       .lte('fire_at', now.toISOString());
   }

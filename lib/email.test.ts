@@ -13,7 +13,12 @@
 // Timestamps in text/html render in the given timezone (CLAUDE.md §5); those
 // are asserted via substring checks, space-agnostic, to survive ICU changes.
 
-import { reminderEmailFor, digestEmailFor, isEmailConfigured } from './email';
+import {
+  reminderEmailFor,
+  digestEmailFor,
+  applicationReminderEmailFor,
+  isEmailConfigured,
+} from './email';
 
 let passed = 0;
 let failed = 0;
@@ -149,6 +154,65 @@ const digestXss = digestEmailFor({
 has('digest html: escapes title', digestXss.html, '&lt;b&gt;');
 has('digest html: escapes &', digestXss.html, '&amp;');
 lacks('digest html: no raw <b> tag', digestXss.html, '<b>x</b>');
+
+// ================= applicationReminderEmailFor =================
+
+// nextAction present → it names the subject; >=24h → days branch.
+const app2d = applicationReminderEmailFor({
+  appUrl: 'https://app.test',
+  company: 'Cisco',
+  role: 'SWE Intern',
+  nextAction: 'Send thank-you email',
+  nextActionAtIso: DUE,
+  timezone: TZ,
+  hoursUntil: 48,
+});
+eq('app subject: company + action + 2 days', app2d.subject, 'Cisco — Send thank-you email in 2 days');
+has('app text: company · role line', app2d.text, 'Cisco · SWE Intern');
+has('app text: applications link', app2d.text, 'https://app.test/applications');
+has('app html: applications link', app2d.html, 'https://app.test/applications');
+has('app html: formatted date in tz (May 7 EDT)', app2d.html, 'May 7');
+
+// nextAction null → generic "next step"; <24h → hours branch.
+const app3h = applicationReminderEmailFor({
+  appUrl: 'https://app.test',
+  company: 'Novaflow',
+  role: 'Data Analyst',
+  nextAction: null,
+  nextActionAtIso: DUE,
+  timezone: TZ,
+  hoursUntil: 3,
+});
+eq('app subject: null action → next step + hours', app3h.subject, 'Novaflow — next step in 3 hours');
+
+// 24h boundary lands in the days branch (matches assignment composer).
+const appBoundary = applicationReminderEmailFor({
+  appUrl: 'https://app.test',
+  company: 'X',
+  role: 'Y',
+  nextAction: 'call',
+  nextActionAtIso: DUE,
+  timezone: TZ,
+  hoursUntil: 24,
+});
+eq('app subject: 24h boundary → 1 days', appBoundary.subject, 'X — call in 1 days');
+
+// HTML escaping of user-controlled company/role/nextAction.
+const appXss = applicationReminderEmailFor({
+  appUrl: 'https://app.test',
+  company: 'A & B <Corp>',
+  role: '"Lead" <dev>',
+  nextAction: `<script>alert('x')</script>`,
+  nextActionAtIso: DUE,
+  timezone: TZ,
+  hoursUntil: 5,
+});
+has('app html: escapes & in company', appXss.html, 'A &amp; B');
+has('app html: escapes <script>', appXss.html, '&lt;script&gt;');
+lacks('app html: no raw <script> tag', appXss.html, '<script>');
+lacks('app html: no raw <Corp>', appXss.html, '<Corp>');
+// Plain-text variant intentionally unescaped.
+has('app text: raw (unescaped) action', appXss.text, '<script>');
 
 // ================= isEmailConfigured (env-driven) =================
 

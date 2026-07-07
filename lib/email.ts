@@ -83,6 +83,34 @@ export function reminderEmailFor(args: {
   return { subject, text, html };
 }
 
+export function applicationReminderEmailFor(args: {
+  appUrl: string;
+  company: string;
+  role: string;
+  nextAction: string | null;
+  nextActionAtIso: string;
+  timezone: string;
+  hoursUntil: number;
+}): { subject: string; text: string; html: string } {
+  const fmt = new Date(args.nextActionAtIso).toLocaleString('en-US', {
+    timeZone: args.timezone,
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  const what = args.nextAction ?? 'next step';
+  const lead =
+    args.hoursUntil >= 24
+      ? `in ${Math.round(args.hoursUntil / 24)} days`
+      : `in ${Math.round(args.hoursUntil)} hours`;
+  const subject = `${args.company} — ${what} ${lead}`;
+  const text = `${args.company} · ${args.role}\n${what} ${lead} (${fmt})\n\nOpen: ${args.appUrl}/applications\n`;
+  const html = `<p style="font-family:system-ui"><strong>${escapeHtml(args.company)} · ${escapeHtml(args.role)}</strong></p><p style="font-family:system-ui">${escapeHtml(what)} ${escapeHtml(lead)} (${escapeHtml(fmt)})</p><p><a href="${args.appUrl}/applications">Open in Deadline Tracker</a></p>`;
+  return { subject, text, html };
+}
+
 export function digestEmailFor(args: {
   appUrl: string;
   todayLabel: string;

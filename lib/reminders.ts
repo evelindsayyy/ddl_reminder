@@ -53,29 +53,9 @@ export async function scheduleAssignmentReminders(args: ScheduleArgs): Promise<v
   // Always wipe pre-existing reminders rows for this assignment, regardless
   // of whether QStash is configured — the rows track *intent*, and the
   // daily sweeper relies on them.
-  const existing = await a
-    .from('reminders')
-    .select('id, qstash_message_id, status')
-    .eq('user_id', args.userId)
-    .eq('assignment_id', args.assignmentId);
+  await cancelRemindersFor(args.userId, 'assignment_id', args.assignmentId);
 
   const qs = qstash();
-  if (!existing.error && existing.data && qs) {
-    for (const row of existing.data) {
-      if (row.status === 'scheduled' && row.qstash_message_id) {
-        try {
-          await qs.messages.delete(row.qstash_message_id);
-        } catch {
-          // best effort; QStash may have already delivered
-        }
-      }
-    }
-  }
-  await a
-    .from('reminders')
-    .delete()
-    .eq('user_id', args.userId)
-    .eq('assignment_id', args.assignmentId);
 
   // Now schedule fresh. Timing math lives in a pure, unit-tested helper.
   const planned = computeReminderFireTimes(
@@ -112,6 +92,77 @@ export async function cancelAssignmentReminders(
   userId: string,
   assignmentId: string
 ): Promise<void> {
+  return cancelRemindersFor(userId, 'assignment_id', assignmentId);
+}
+
+// ---- applications ----
+// Same infra as assignments (CLAUDE.md §6): reminders fire relative to the
+// application's next_action_at using the user's reminder_offsets_hours, land
+// in the same polymorphic `reminders` table (application_id side of the CHECK
+// constraint), and are delivered by the same webhook + daily sweeper.
+
+interface ApplicationScheduleArgs {
+  userId: string;
+  applicationId: string;
+  nextActionAtIso: string;
+  reminderOffsetsHours: number[];
+  appUrl: string;
+}
+
+export async function scheduleApplicationReminders(
+  args: ApplicationScheduleArgs
+): Promise<void> {
+  const a = admin();
+  if (!a) return;
+
+  // Wipe pre-existing rows (and their QStash messages) first — idempotent,
+  // same contract as the assignment scheduler.
+  await cancelApplicationReminders(args.userId, args.applicationId);
+
+  const qs = qstash();
+  const planned = computeReminderFireTimes(
+    args.nextActionAtIso,
+    args.reminderOffsetsHours,
+    Date.now()
+  );
+  for (const { offsetHours, fireAtMs, fireAtIso } of planned) {
+    let messageId: string | null = null;
+    if (qs) {
+      try {
+        const res = await qs.publishJSON({
+          url: `${args.appUrl}/api/webhooks/reminder`,
+          body: { applicationId: args.applicationId, offsetHours },
+          notBefore: Math.floor(fireAtMs / 1000),
+        });
+        messageId = res.messageId;
+      } catch {
+        // fall through; the row stays 'scheduled' with null messageId so the
+        // daily sweeper can still send it.
+      }
+    }
+    await a.from('reminders').insert({
+      user_id: args.userId,
+      application_id: args.applicationId,
+      fire_at: fireAtIso,
+      status: 'scheduled',
+      qstash_message_id: messageId,
+    });
+  }
+}
+
+export async function cancelApplicationReminders(
+  userId: string,
+  applicationId: string
+): Promise<void> {
+  return cancelRemindersFor(userId, 'application_id', applicationId);
+}
+
+// Shared cancel: delete the QStash messages (best effort), then the rows.
+async function cancelRemindersFor(
+  userId: string,
+  parentColumn: 'assignment_id' | 'application_id',
+  parentId: string
+): Promise<void> {
   const a = admin();
   if (!a) return;
   const qs = qstash();
@@ -120,7 +171,7 @@ export async function cancelAssignmentReminders(
     .from('reminders')
     .select('id, qstash_message_id, status')
     .eq('user_id', userId)
-    .eq('assignment_id', assignmentId);
+    .eq(parentColumn, parentId);
 
   if (qs && existing.data) {
     for (const row of existing.data) {
@@ -128,14 +179,10 @@ export async function cancelAssignmentReminders(
         try {
           await qs.messages.delete(row.qstash_message_id);
         } catch {
-          /* best effort */
+          /* best effort; QStash may have already delivered */
         }
       }
     }
   }
-  await a
-    .from('reminders')
-    .delete()
-    .eq('user_id', userId)
-    .eq('assignment_id', assignmentId);
+  await a.from('reminders').delete().eq('user_id', userId).eq(parentColumn, parentId);
 }

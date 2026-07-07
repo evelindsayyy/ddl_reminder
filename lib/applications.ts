@@ -13,6 +13,17 @@ import {
   type UpdateApplicationInput,
 } from '@/lib/schemas';
 import { resolveStageForLane, type DisplayStage } from '@/lib/applicationStage';
+import { ensureUserPrefs } from '@/lib/prefs';
+import {
+  cancelApplicationReminders,
+  scheduleApplicationReminders,
+} from '@/lib/reminders';
+
+const TERMINAL_STAGES = ['offer', 'rejected', 'withdrawn'];
+
+function appUrl(): string {
+  return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+}
 
 interface ActionResult<T = void> {
   ok: boolean;
@@ -46,6 +57,18 @@ export async function createApplication(input: CreateApplicationInput): Promise<
 
   if (error) return { ok: false, error: error.message };
 
+  // Schedule next-action reminders (same infra as assignments, CLAUDE.md §6).
+  if (parsed.data.nextActionAt) {
+    const prefs = await ensureUserPrefs(supabase, { id: user.id, email: user.email });
+    void scheduleApplicationReminders({
+      userId: user.id,
+      applicationId: data.id,
+      nextActionAtIso: parsed.data.nextActionAt,
+      reminderOffsetsHours: prefs.reminder_offsets_hours,
+      appUrl: appUrl(),
+    });
+  }
+
   revalidatePath('/applications');
   revalidatePath('/');
   return { ok: true, data: data.id };
@@ -72,13 +95,32 @@ export async function updateApplication(
   if (parsed.data.nextActionAt !== undefined) patch.next_action_at = parsed.data.nextActionAt;
   if (parsed.data.notes !== undefined) patch.notes = parsed.data.notes;
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from('applications')
     .update(patch)
     .eq('id', id)
-    .eq('user_id', user.id);
+    .eq('user_id', user.id)
+    .select('stage, next_action_at')
+    .single();
 
   if (error) return { ok: false, error: error.message };
+
+  // Keep reminders in sync with the row we just wrote:
+  //  - terminal stage or cleared next action → cancel outstanding reminders;
+  //  - next_action_at set/changed → reschedule (idempotent full re-plan).
+  if (TERMINAL_STAGES.includes(updated.stage) || updated.next_action_at === null) {
+    void cancelApplicationReminders(user.id, id);
+  } else if (parsed.data.nextActionAt !== undefined && updated.next_action_at) {
+    const prefs = await ensureUserPrefs(supabase, { id: user.id, email: user.email });
+    void scheduleApplicationReminders({
+      userId: user.id,
+      applicationId: id,
+      nextActionAtIso: updated.next_action_at,
+      reminderOffsetsHours: prefs.reminder_offsets_hours,
+      appUrl: appUrl(),
+    });
+  }
+
   revalidatePath('/applications');
   revalidatePath('/');
   return { ok: true };
@@ -119,6 +161,12 @@ export async function moveApplicationToLane(
     .eq('user_id', user.id);
 
   if (error) return { ok: false, error: error.message };
+
+  // Dragging into a terminal lane retires any pending next-action reminders.
+  if (TERMINAL_STAGES.includes(nextStage)) {
+    void cancelApplicationReminders(user.id, id);
+  }
+
   revalidatePath('/applications');
   revalidatePath('/');
   return { ok: true };
@@ -130,6 +178,11 @@ export async function deleteApplication(id: string): Promise<ActionResult> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
+
+  // Cancel BEFORE deleting: reminders.application_id is ON DELETE CASCADE,
+  // so after the delete the rows (and their qstash_message_id) are gone and
+  // the scheduled QStash messages would fire uselessly later.
+  await cancelApplicationReminders(user.id, id);
 
   const { error } = await supabase
     .from('applications')
