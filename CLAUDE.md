@@ -62,31 +62,49 @@ deadline-tracker/
 │   │   ├── assignments/page.tsx
 │   │   ├── applications/page.tsx
 │   │   └── settings/page.tsx
+│   ├── auth/callback/route.ts      # magic-link redirect target
 │   └── api/
-│       ├── assignments/route.ts
-│       ├── applications/route.ts
-│       ├── parse/route.ts          # NLP endpoint
-│       ├── ics/[token]/route.ts    # per-user calendar feed
-│       ├── cron/daily/route.ts     # Vercel cron target
-│       └── webhooks/reminder/route.ts  # QStash → send email
-├── lib/
-│   ├── supabase/{client,server}.ts
+│       ├── assignments/route.ts            # + [id]/route.ts (PATCH/DELETE, ?scope=one|series)
+│       ├── courses/route.ts                # + [id]/route.ts
+│       ├── settings/route.ts
+│       ├── parse/route.ts                  # NLP endpoint
+│       ├── ics/[token]/route.ts            # per-user calendar feed (out)
+│       ├── ics-token/rotate/route.ts
+│       ├── canvas/sync/route.ts            # manual "Sync now" (Canvas import)
+│       ├── sync/gradescope/route.ts        # bookmarklet POST target
+│       ├── gradescope-token/route.ts       # + rotate/route.ts
+│       ├── bookmarklet/route.ts            # serves the Gradescope bookmarklet JS
+│       ├── cron/daily/route.ts             # Vercel cron target (§6 layer 2)
+│       └── webhooks/reminder/route.ts      # QStash → send email
+├── lib/                            # logic modules; most have a sibling *.test.ts
+│   ├── supabase/{client,server,middleware}.ts
 │   ├── parser/index.ts             # parseAssignment() + per-date TZ offset (§5)
 │   ├── parser/parser.test.ts       # print-only smoke test (§7 cases)
 │   ├── parser/parser.assert.test.ts # machine-checked §7 contract (in `npm test`)
-│   ├── reminders.ts                # QStash schedule/cancel
-│   ├── email.ts                    # Resend wrapper
-│   ├── theme.ts                    # dark-mode preference resolver (+ test)
-│   └── ics.ts                      # .ics generation
+│   ├── reminders.ts                # QStash schedule/cancel (assignments + applications)
+│   ├── reminderSchedule.ts         # pure fire-time math (due_at − offsets)
+│   ├── recurrence.ts               # NL detection, series expansion, series-edit patch
+│   ├── applications.ts             # server actions — see "pattern split" note below
+│   ├── applicationStage.ts         # 8-stage schema ↔ 4-lane display mapping
+│   ├── canvas.ts                   # Canvas .ics import (parse + upsert)
+│   ├── urlGuard.ts                 # SSRF guard for user-supplied fetch URLs
+│   ├── email.ts                    # Resend wrapper + compose helpers
+│   ├── ics.ts                      # outbound .ics feed generation
+│   ├── prefs.ts                    # ensureUserPrefs + token generation
+│   ├── schemas.ts                  # zod validation for every mutating route
+│   ├── bucket.ts / score.ts        # dashboard bucketing + urgency score
+│   ├── datetime.ts                 # startOfDayInZone (digest "today" boundary)
+│   ├── format.ts / colors.ts / tags.ts / assignmentFilter.ts
+│   ├── theme.ts                    # dark-mode preference resolver
+│   └── utils.ts                    # cn()
 ├── components/                     # grouped by feature, not by type
 │   ├── dashboard/                  # DashboardBuckets, BucketColumn, AssignmentCard
 │   ├── assignments/                # AssignmentsView, QuickAdd (the magic bar), calendar/timeline
-│   ├── applications/               # ApplicationCard, pipeline (kanban/timeline/funnel)
+│   ├── applications/               # ApplicationCard, AddApplicationForm, pipeline (kanban/timeline/funnel)
 │   ├── settings/                   # CoursesManager, SettingsForm, RemindersForm, IntegrationsPanel, ThemeToggle
 │   ├── layout/                     # MobileBottomNav, MobileAddBar
 │   └── ui/                         # CourseChip, TypePill, RelativeTime
-├── supabase/migrations/
-│   └── 0001_init.sql
+├── supabase/migrations/            # 0001_init … 0005_assignment_tags (see §4)
 ├── design/                         # wireframes (index.html + *.jsx), HANDOFF, DESIGN_TOKENS — not in the build
 ├── public/manifest.json            # PWA
 └── vercel.json                     # cron config
@@ -94,6 +112,11 @@ deadline-tracker/
 
 **Route groups:** `(auth)` and `(app)` share layouts without nesting URLs.
 **Parser in `lib/`:** keeps it unit-testable and reusable (Telegram bot later).
+**Persistence pattern split (intentional):** assignments/courses/settings use
+`app/api/*` route handlers; **applications use Next.js server actions** in
+`lib/applications.ts` (there is no `app/api/applications/` route — a design
+HANDOFF constraint kept `app/api/**` untouched). Both paths re-check
+`supabase.auth.getUser()` and rely on RLS.
 **Components by feature:** every component lives under a domain folder
 (`dashboard/`, `assignments/`, `applications/`, `settings/`, `layout/`) or
 `ui/` — nothing loose at the `components/` root. Put new components in the
@@ -105,20 +128,36 @@ folder for the screen they serve.
 
 ## 4. Data model
 
-Full schema lives in `supabase/migrations/0001_init.sql`. Summary:
+The schema spans `supabase/migrations/0001`–`0005` (contiguous, additive):
+
+| Migration | Adds |
+|-----------|------|
+| `0001_init` | core tables: `courses`, `assignments`, `applications`, `reminders`, `user_prefs`; RLS on all |
+| `0002_integrations` | `assignments.source` (`manual\|canvas\|gradescope`), `external_id`, `external_url`, `recurrence_group_id`; `user_prefs.semester_end_date`, `canvas_ics_url`, `gradescope_sync_token` |
+| `0003_ics_token` | `user_prefs.ics_token` (§8 feed auth) |
+| `0004_sync_status` | `user_prefs.canvas_last_sync_at`, `canvas_last_sync_error` |
+| `0005_assignment_tags` | `assignments.tags text[]` |
+
+Summary:
 
 - **`courses`** — user's Duke courses. Unique on `(user_id, code)` so
   re-importing a syllabus doesn't duplicate.
 - **`assignments`** — FK to `courses` (nullable — a one-off deadline has no
   course). `type` is an enum. `completed_at IS NULL` = open. `tags text[]`
   (migration `0005`, default `{}`) holds the `#tags` the parser extracts,
-  normalized at the API boundary via `lib/tags.ts`.
+  normalized at the API boundary via `lib/tags.ts`. Imported rows carry
+  `source`/`external_id`/`external_url`; recurring rows share a
+  `recurrence_group_id`.
 - **`applications`** — separate from assignments because the shape diverges:
-  stage enum, `next_action_at`, no single "due date". Do not merge these.
+  stage enum (8 stages; `offer`/`rejected`/`withdrawn` are terminal),
+  `next_action_at`, no single "due date". Do not merge these.
 - **`reminders`** — CHECK constraint: exactly one of `assignment_id` /
-  `application_id` set. Stores the QStash message ID so I can cancel.
+  `application_id` set. Stores the QStash message ID so I can cancel. Both
+  sides are live: assignments key on `due_at`, applications on
+  `next_action_at` (same scheduler, webhook, and sweeper).
 - **`user_prefs`** — `reminder_offsets_hours int[]` (default
   `{168, 48, 12}` = 1 week, 2 days, 12 hours). `timezone` as IANA string.
+  Plus per-integration fields (see migrations table above).
 
 ### Non-obvious decisions
 
@@ -227,8 +266,19 @@ When an assignment is created or updated:
 3. Skip any `fire_at` that's in the past (e.g., adding "due tomorrow"
    skips the 168h reminder).
 4. For each remaining `fire_at`, call `qstash.publishJSON({ url,
-   body: { reminderId }, notBefore: Math.floor(fire_at / 1000) })`.
+   body: { assignmentId, offsetHours }, notBefore: Math.floor(fire_at / 1000) })`.
 5. Store the returned `messageId` in the `reminders` row.
+
+**Applications ride the same infra** (`scheduleApplicationReminders` /
+`cancelApplicationReminders` in `lib/reminders.ts`): reminders fire relative to
+`next_action_at` using the same user offsets, publish
+`{ applicationId, offsetHours }`, and land on the `application_id` side of the
+polymorphic `reminders` table. The server actions in `lib/applications.ts`
+reschedule on create/update, and cancel when `next_action_at` is cleared, the
+row is deleted, or the stage moves to a terminal one
+(`offer`/`rejected`/`withdrawn` — including a kanban drag into those lanes).
+The webhook and sweeper both skip-and-cancel stale application reminders the
+same way they skip completed assignments.
 
 ### Layer 2: daily reconciliation (Vercel Cron)
 Runs once per day at ~07:00 user-local (`app/api/cron/daily/route.ts`):
@@ -259,6 +309,26 @@ every overdue sibling.
 Vercel cron calls `/api/cron/daily` with an `Authorization: Bearer
 $CRON_SECRET` header. Verify it; reject otherwise.
 
+### Imports (Canvas & Gradescope)
+
+Two inbound importers create `assignments` rows directly (upsert on
+`(user_id, source, external_id)`; user edits to notes/hours/completion are
+preserved on re-import):
+
+- **Canvas** (`lib/canvas.ts`) — user pastes their Canvas calendar feed URL in
+  Settings (`user_prefs.canvas_ics_url`); the daily cron (and a manual "Sync
+  now" button → `/api/canvas/sync`) fetches and parses the `.ics`. The fetch is
+  SSRF-guarded (`lib/urlGuard.ts`: HTTPS-only, no private/loopback/metadata
+  IPs, `redirect: 'error'`). Sync outcome persists to
+  `user_prefs.canvas_last_sync_at/_error` and shows in Settings.
+- **Gradescope** (`/api/sync/gradescope`) — a bookmarklet (served by
+  `/api/bookmarklet`) scrapes the logged-in Gradescope page client-side and
+  POSTs assignments with a per-user 256-bit `gradescope_sync_token` (rotatable,
+  like the ics token).
+
+Neither importer schedules reminders itself — the cron **backfill** (layer 2
+above) picks up imported rows.
+
 ---
 
 ## 7. NLP parser
@@ -271,11 +341,16 @@ Lives in `lib/parser/index.ts`. Test file in the same directory. Run
    Handles `STA 240`, `COMPSCI 210D`, `ENGLISH 208S`. Strip the match from
    the input before further extraction.
 2. **Tags** (`#hard`, `#group`). Strip and collect.
-3. **Type** via keyword regex (see `TYPE_PATTERNS`). Order matters — check
+3. **Recurrence** via `detectRecurrence` (`lib/recurrence.ts`) — patterns like
+   "every friday", "weekly until May 1". Populates
+   `recurrence: Recurrence | null` on the parse result and adds +0.1
+   confidence when matched. (QuickAdd also has a manual 🔁 editor as the
+   escape hatch when detection misses.)
+4. **Type** via keyword regex (see `TYPE_PATTERNS`). Order matters — check
    specific terms before generic ones (`exam` before `assignment`).
-4. **Date** via `chrono.parse` with timezone per §5. Use the **last**
+5. **Date** via `chrono.parse` with timezone per §5. Use the **last**
    date match (handles "Lab 5 (started Tuesday) due Friday").
-5. **Title** = whatever's left after stripping filler words (`due`, `by`,
+6. **Title** = whatever's left after stripping filler words (`due`, `by`,
    `on`, `at`). Fall back to `"Untitled"` if empty.
 
 ### Confidence score
@@ -352,6 +427,11 @@ accidentally share the URL.
 ---
 
 ## 10. Build order
+
+> **Historical.** This was the v1 build plan; everything below has shipped
+> (including the Week-2 items — applications, `.ics` feed, dashboard, and
+> `next_action_at` reminders). Kept for the reasoning, not as a todo list.
+> Current state and open items live in §14.
 
 ### Week 1 — ship something usable by day 4
 
