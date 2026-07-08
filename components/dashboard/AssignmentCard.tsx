@@ -25,12 +25,17 @@ export interface AssignmentCardData {
   courses: { code: string; name: string | null; color: string } | null;
 }
 
-// Shape sent up from the inline edit form. `actualHours` is optional so views
-// with a leaner edit form (e.g. the timeline tooltip) can omit it; when
-// present it is `null` to clear or a non-negative number of logged hours.
+// Shape sent up from the inline edit form. The hour/notes fields are optional
+// so views with a leaner edit form (e.g. the timeline tooltip) can omit them;
+// when present, `null` clears the stored value. Note `notes` and
+// `estimatedHours` are series-propagatable (the API's ?scope=series shares
+// them with future occurrences), while `dueAt`/`actualHours` are always
+// per-occurrence.
 export interface AssignmentEditPatch {
   title: string;
   dueAt: string;
+  notes?: string | null;
+  estimatedHours?: number | null;
   actualHours?: number | null;
 }
 
@@ -289,20 +294,37 @@ function EditForm({
   const [actualHours, setActualHours] = useState(
     a.actual_hours != null ? String(a.actual_hours) : ''
   );
+  const [estimatedHours, setEstimatedHours] = useState(
+    a.estimated_hours != null ? String(a.estimated_hours) : ''
+  );
+  const [notes, setNotes] = useState(a.notes ?? '');
 
-  // Save with the given scope. `series` propagates the title to future
-  // occurrences in the same recurrence group; the date stays per-occurrence
-  // (the API never shares due_at), so only this row's due_at moves.
-  // `actual_hours` is always per-occurrence — the API never propagates it.
+  // Guard against a non-numeric or negative entry; clear rather than sending
+  // NaN (the schema would reject the whole PATCH).
+  function parseHours(raw: string): number | null {
+    const trimmed = raw.trim();
+    if (trimmed === '') return null;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+  }
+
+  // Save with the given scope. `series` propagates title/notes/estimated
+  // hours to future occurrences in the same recurrence group; the date stays
+  // per-occurrence (the API never shares due_at), so only this row's due_at
+  // moves. `actual_hours` is always per-occurrence — never propagated.
   function save(scope: 'one' | 'series') {
     if (!title.trim()) return;
     const utc = new Date(localDt).toISOString();
-    const trimmed = actualHours.trim();
-    const parsed = trimmed === '' ? null : Number(trimmed);
-    // Guard against a non-numeric or negative entry; drop the field rather
-    // than sending NaN (the schema would reject the whole PATCH).
-    const validActual = parsed != null && Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
-    onSave({ title: title.trim(), dueAt: utc, actualHours: validActual }, scope);
+    onSave(
+      {
+        title: title.trim(),
+        dueAt: utc,
+        notes: notes.trim() === '' ? null : notes.trim(),
+        estimatedHours: parseHours(estimatedHours),
+        actualHours: parseHours(actualHours),
+      },
+      scope
+    );
   }
 
   function submit(e: FormEvent<HTMLFormElement>) {
@@ -328,12 +350,31 @@ function EditForm({
         type="number"
         min="0"
         step="0.5"
+        value={estimatedHours}
+        onChange={(e) => setEstimatedHours(e.target.value)}
+        placeholder="est"
+        aria-label="Estimated hours"
+        title="Estimated hours"
+        className="w-16 rounded border border-ink-faint px-2 py-1 text-sm font-mono focus:border-ink focus:outline-none"
+      />
+      <input
+        type="number"
+        min="0"
+        step="0.5"
         value={actualHours}
         onChange={(e) => setActualHours(e.target.value)}
         placeholder="hrs"
         aria-label="Actual hours logged"
         title="Actual hours logged"
         className="w-16 rounded border border-ink-faint px-2 py-1 text-sm font-mono focus:border-ink focus:outline-none"
+      />
+      <textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        placeholder="Notes"
+        aria-label="Notes"
+        rows={2}
+        className="w-full rounded border border-ink-faint px-2 py-1 text-sm focus:border-ink focus:outline-none"
       />
       <button
         type="submit"
@@ -345,7 +386,7 @@ function EditForm({
         <button
           type="button"
           onClick={() => save('series')}
-          title="Apply the title to this and all upcoming occurrences"
+          title="Apply title, notes, and estimated hours to this and all upcoming occurrences"
           className="rounded border border-ink px-3 py-1 text-xs font-medium text-ink hover:bg-bg-dim"
         >
           Save all upcoming

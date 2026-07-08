@@ -97,11 +97,13 @@ export function AssignmentsView({
     try {
       const url =
         scope === 'series' ? `/api/assignments/${id}?scope=series` : `/api/assignments/${id}`;
-      // Only include actualHours when the edit form actually provided it
-      // (the timeline tooltip omits it) so we never overwrite a logged value
-      // with undefined.
+      // Only include the optional fields when the edit form actually provided
+      // them (the timeline tooltip omits them) so we never overwrite a stored
+      // value with undefined.
       const body: Record<string, unknown> = { title: patch.title, dueAt: patch.dueAt };
       if (patch.actualHours !== undefined) body.actualHours = patch.actualHours;
+      if (patch.estimatedHours !== undefined) body.estimatedHours = patch.estimatedHours;
+      if (patch.notes !== undefined) body.notes = patch.notes;
       const res = await fetch(url, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
