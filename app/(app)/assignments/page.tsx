@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ensureUserPrefs } from '@/lib/prefs';
+import { firstRow } from '@/lib/supabaseJoin';
 import QuickAdd from '@/components/assignments/QuickAdd';
 import {
   AssignmentsView,
@@ -90,7 +91,7 @@ export default async function AssignmentsPage({ searchParams }: PageProps) {
     recurrence_group_id: row.recurrence_group_id,
     source: row.source,
     external_url: row.external_url,
-    courses: Array.isArray(row.courses) ? (row.courses[0] ?? null) : row.courses,
+    courses: firstRow(row.courses),
   }));
 
   return (

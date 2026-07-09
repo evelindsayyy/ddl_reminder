@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { buildIcs } from '@/lib/ics';
+import { firstRow } from '@/lib/supabaseJoin';
 
 interface RouteContext {
   params: { token: string };
@@ -78,7 +79,7 @@ export async function GET(_: NextRequest, { params }: RouteContext) {
       completed_at: row.completed_at,
       notes: row.notes,
       external_url: row.external_url,
-      courses: Array.isArray(row.courses) ? row.courses[0] ?? null : row.courses,
+      courses: firstRow(row.courses),
     };
   });
 

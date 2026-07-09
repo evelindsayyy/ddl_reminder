@@ -10,6 +10,7 @@ import {
 } from '@/lib/email';
 import { startOfDayInZone } from '@/lib/datetime';
 import { scheduleAssignmentReminders } from '@/lib/reminders';
+import { firstRow } from '@/lib/supabaseJoin';
 
 const DEFAULT_OFFSETS = [168, 48, 12];
 
@@ -120,7 +121,6 @@ async function runSweeper(
       user_prefs: PrefsJoin;
     } | null;
   };
-  const firstPrefs = (p: PrefsJoin) => (Array.isArray(p) ? p[0] ?? null : p);
   const TERMINAL_STAGES = ['offer', 'rejected', 'withdrawn'];
 
   for (const r of (due.data ?? []) as unknown as Joined[]) {
@@ -140,8 +140,8 @@ async function runSweeper(
         await admin.from('reminders').update({ status: 'cancelled' }).eq('id', r.id);
         continue;
       }
-      const courseCode = Array.isArray(a.courses) ? a.courses[0]?.code ?? null : a.courses?.code ?? null;
-      const prefs = firstPrefs(a.user_prefs);
+      const courseCode = firstRow(a.courses)?.code ?? null;
+      const prefs = firstRow(a.user_prefs);
       if (!prefs) {
         skipped++;
         continue;
@@ -169,7 +169,7 @@ async function runSweeper(
         await admin.from('reminders').update({ status: 'cancelled' }).eq('id', r.id);
         continue;
       }
-      const prefs = firstPrefs(app.user_prefs);
+      const prefs = firstRow(app.user_prefs);
       if (!prefs) {
         skipped++;
         continue;
@@ -328,7 +328,7 @@ async function runDailyDigest(
     const todayItems = ((items.data ?? []) as unknown as DigestRow[]).map((row) => ({
       title: row.title,
       dueAtIso: row.due_at,
-      courseCode: Array.isArray(row.courses) ? row.courses[0]?.code ?? null : row.courses?.code ?? null,
+      courseCode: firstRow(row.courses)?.code ?? null,
     }));
     if (todayItems.length === 0) {
       skipped++;

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { Receiver } from '@upstash/qstash';
 import { createClient as createAdmin, type SupabaseClient } from '@supabase/supabase-js';
 import { applicationReminderEmailFor, reminderEmailFor, sendEmail } from '@/lib/email';
+import { firstRow } from '@/lib/supabaseJoin';
 
 // QStash → here. Verify the signature, then look up the assignment +
 // recipient and send the reminder email. Mark the reminders row 'sent'.
@@ -58,8 +59,8 @@ export async function POST(request: NextRequest) {
     user_prefs: { email: string; timezone: string } | { email: string; timezone: string }[] | null;
   };
   const a = fetched.data as unknown as AssignmentWithJoin;
-  const courseCode = Array.isArray(a.courses) ? a.courses[0]?.code ?? null : a.courses?.code ?? null;
-  const prefs = Array.isArray(a.user_prefs) ? a.user_prefs[0] ?? null : a.user_prefs;
+  const courseCode = firstRow(a.courses)?.code ?? null;
+  const prefs = firstRow(a.user_prefs);
 
   // Skip silently if marked done — user already handled it.
   if (a.completed_at) return NextResponse.json({ ok: true, skipped: 'already_done' });
@@ -135,7 +136,7 @@ async function handleApplicationReminder(
     user_prefs: { email: string; timezone: string } | { email: string; timezone: string }[] | null;
   };
   const app = fetched.data as unknown as AppWithJoin;
-  const prefs = Array.isArray(app.user_prefs) ? app.user_prefs[0] ?? null : app.user_prefs;
+  const prefs = firstRow(app.user_prefs);
 
   const TERMINAL_STAGES = ['offer', 'rejected', 'withdrawn'];
   if (TERMINAL_STAGES.includes(app.stage) || !app.next_action_at) {

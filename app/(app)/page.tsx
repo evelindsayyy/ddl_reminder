@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ensureUserPrefs } from '@/lib/prefs';
+import { firstRow } from '@/lib/supabaseJoin';
 import { DashboardBuckets } from '@/components/dashboard/DashboardBuckets';
 import type { AssignmentCardData } from '@/components/dashboard/AssignmentCard';
 
@@ -50,7 +51,7 @@ export default async function DashboardPage() {
     recurrence_group_id: row.recurrence_group_id,
     source: row.source,
     external_url: row.external_url,
-    courses: Array.isArray(row.courses) ? (row.courses[0] ?? null) : row.courses,
+    courses: firstRow(row.courses),
   }));
 
   // Failed reminders for still-open assignments are real missed notifications:
@@ -66,7 +67,7 @@ export default async function DashboardPage() {
     .eq('user_id', user.id)
     .eq('status', 'failed');
   const failedCount = ((failedReminders.data ?? []) as unknown as FailedRow[]).filter((r) => {
-    const a = Array.isArray(r.assignment) ? r.assignment[0] ?? null : r.assignment;
+    const a = firstRow(r.assignment);
     return a != null && a.completed_at == null;
   }).length;
 
