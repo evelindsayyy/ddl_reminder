@@ -3,6 +3,7 @@ import { Receiver } from '@upstash/qstash';
 import { createClient as createAdmin, type SupabaseClient } from '@supabase/supabase-js';
 import { applicationReminderEmailFor, reminderEmailFor, sendEmail } from '@/lib/email';
 import { firstRow } from '@/lib/supabaseJoin';
+import { isTerminalStage } from '@/lib/applicationStage';
 
 // QStash → here. Verify the signature, then look up the assignment +
 // recipient and send the reminder email. Mark the reminders row 'sent'.
@@ -138,8 +139,7 @@ async function handleApplicationReminder(
   const app = fetched.data as unknown as AppWithJoin;
   const prefs = firstRow(app.user_prefs);
 
-  const TERMINAL_STAGES = ['offer', 'rejected', 'withdrawn'];
-  if (TERMINAL_STAGES.includes(app.stage) || !app.next_action_at) {
+  if (isTerminalStage(app.stage) || !app.next_action_at) {
     // Stale message (stage moved on, or next action cleared) — skip silently
     // and cancel any leftover scheduled rows so the sweeper won't resend.
     await admin

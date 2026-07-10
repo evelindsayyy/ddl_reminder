@@ -21,9 +21,12 @@ export const INTERVIEW_STAGES: ApplicationStage[] = [
 // asserts this invariant against toDisplayStage).
 export const TERMINAL_STAGES: ApplicationStage[] = ['offer', 'rejected', 'withdrawn'];
 
-// Is this stage terminal (closed — no further reminders)?
-export function isTerminalStage(stage: ApplicationStage): boolean {
-  return TERMINAL_STAGES.includes(stage);
+// Is this stage terminal (closed — no further reminders)? Accepts a raw
+// string so callers holding a DB-joined `stage: string` (the reminder webhook
+// and daily cron sweeper) can use it without a cast; unknown values are simply
+// non-terminal.
+export function isTerminalStage(stage: string): boolean {
+  return (TERMINAL_STAGES as readonly string[]).includes(stage);
 }
 
 // Forward map: which display lane does a schema stage belong to?

@@ -11,6 +11,7 @@ import {
 import { startOfDayInZone } from '@/lib/datetime';
 import { scheduleAssignmentReminders } from '@/lib/reminders';
 import { firstRow } from '@/lib/supabaseJoin';
+import { isTerminalStage } from '@/lib/applicationStage';
 
 const DEFAULT_OFFSETS = [168, 48, 12];
 
@@ -121,8 +122,6 @@ async function runSweeper(
       user_prefs: PrefsJoin;
     } | null;
   };
-  const TERMINAL_STAGES = ['offer', 'rejected', 'withdrawn'];
-
   for (const r of (due.data ?? []) as unknown as Joined[]) {
     // Compose the email for whichever parent this reminder row points at
     // (exactly one is set, per the table's CHECK constraint).
@@ -164,7 +163,7 @@ async function runSweeper(
       }
       // Terminal stage or cleared next action → stale, cancel like a
       // completed assignment.
-      if (TERMINAL_STAGES.includes(app.stage) || !app.next_action_at) {
+      if (isTerminalStage(app.stage) || !app.next_action_at) {
         skipped++;
         await admin.from('reminders').update({ status: 'cancelled' }).eq('id', r.id);
         continue;
