@@ -12,14 +12,16 @@ import {
   type CreateApplicationInput,
   type UpdateApplicationInput,
 } from '@/lib/schemas';
-import { resolveStageForLane, type DisplayStage } from '@/lib/applicationStage';
+import {
+  isTerminalStage,
+  resolveStageForLane,
+  type DisplayStage,
+} from '@/lib/applicationStage';
 import { ensureUserPrefs } from '@/lib/prefs';
 import {
   cancelApplicationReminders,
   scheduleApplicationReminders,
 } from '@/lib/reminders';
-
-const TERMINAL_STAGES = ['offer', 'rejected', 'withdrawn'];
 
 function appUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
@@ -108,7 +110,7 @@ export async function updateApplication(
   // Keep reminders in sync with the row we just wrote:
   //  - terminal stage or cleared next action → cancel outstanding reminders;
   //  - next_action_at set/changed → reschedule (idempotent full re-plan).
-  if (TERMINAL_STAGES.includes(updated.stage) || updated.next_action_at === null) {
+  if (isTerminalStage(updated.stage) || updated.next_action_at === null) {
     void cancelApplicationReminders(user.id, id);
   } else if (parsed.data.nextActionAt !== undefined && updated.next_action_at) {
     const prefs = await ensureUserPrefs(supabase, { id: user.id, email: user.email });
@@ -163,7 +165,7 @@ export async function moveApplicationToLane(
   if (error) return { ok: false, error: error.message };
 
   // Dragging into a terminal lane retires any pending next-action reminders.
-  if (TERMINAL_STAGES.includes(nextStage)) {
+  if (isTerminalStage(nextStage)) {
     void cancelApplicationReminders(user.id, id);
   }
 

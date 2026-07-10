@@ -4,7 +4,9 @@
 import {
   toDisplayStage,
   resolveStageForLane,
+  isTerminalStage,
   INTERVIEW_STAGES,
+  TERMINAL_STAGES,
   type DisplayStage,
 } from './applicationStage';
 import { APPLICATION_STAGES, type ApplicationStage } from './schemas';
@@ -76,6 +78,35 @@ for (const stage of APPLICATION_STAGES) {
   assert(
     `round-trip keeps ${stage} in lane ${lane}`,
     toDisplayStage(resolved) === lane
+  );
+}
+
+// --- isTerminalStage: the three closed stages, and only those ---
+assert('offer is terminal', isTerminalStage('offer'));
+assert('rejected is terminal', isTerminalStage('rejected'));
+assert('withdrawn is terminal', isTerminalStage('withdrawn'));
+assert('applied is not terminal', !isTerminalStage('applied'));
+for (const sub of INTERVIEW_STAGES) {
+  assert(`${sub} is not terminal`, !isTerminalStage(sub));
+}
+
+// TERMINAL_STAGES is exactly {offer, rejected, withdrawn} — no drift.
+eq('TERMINAL_STAGES has 3 entries', TERMINAL_STAGES.length, 3);
+for (const stage of APPLICATION_STAGES) {
+  assert(
+    `isTerminalStage agrees with TERMINAL_STAGES for ${stage}`,
+    isTerminalStage(stage) === TERMINAL_STAGES.includes(stage)
+  );
+}
+
+// Invariant the comment promises: a stage is terminal iff its display lane is
+// 'offer' or 'rejected'. Keeps the two representations from diverging.
+for (const stage of APPLICATION_STAGES) {
+  const lane = toDisplayStage(stage);
+  const laneIsTerminal = lane === 'offer' || lane === 'rejected';
+  assert(
+    `terminal(${stage}) matches its lane being offer/rejected`,
+    isTerminalStage(stage) === laneIsTerminal
   );
 }
 

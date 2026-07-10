@@ -14,6 +14,18 @@ export const INTERVIEW_STAGES: ApplicationStage[] = [
   'onsite',
 ];
 
+// The terminal stages — once an application reaches one of these it is closed,
+// so its next-action reminders should be cancelled and none scheduled. `offer`
+// and `rejected` are outcomes; `withdrawn` is a self-exit. Equivalently, these
+// are exactly the stages whose display lane is 'offer' or 'rejected' (the test
+// asserts this invariant against toDisplayStage).
+export const TERMINAL_STAGES: ApplicationStage[] = ['offer', 'rejected', 'withdrawn'];
+
+// Is this stage terminal (closed — no further reminders)?
+export function isTerminalStage(stage: ApplicationStage): boolean {
+  return TERMINAL_STAGES.includes(stage);
+}
+
 // Forward map: which display lane does a schema stage belong to?
 export function toDisplayStage(stage: ApplicationStage): DisplayStage {
   if (stage === 'applied') return 'applied';
