@@ -54,3 +54,25 @@ export function startOfDayInZone(now: Date, tz: string): Date {
   const offsetMs = fakeAsUtc - localMidnight.getTime();
   return new Date(localMidnight.getTime() - offsetMs);
 }
+
+/**
+ * Returns the UTC instant for "00:00:00 tomorrow" in the given zone — the start
+ * of the calendar day *after* the one `now` falls on in `tz`.
+ *
+ * Use this to bound a "today" window (`[startOfDay, startOfNextDay)`) rather
+ * than `startOfDayInZone(now) + 24h`. A DST-transition day is 23 or 25 hours
+ * long, so a fixed 24h step lands an hour early or late: on spring-forward it
+ * leaks tomorrow's first hour into today, and on fall-back it drops today's
+ * last hour (see CLAUDE.md §5). Stepping ~36h past today's local midnight lands
+ * squarely inside the next calendar day regardless of a ±1h DST shift, and
+ * snapping that instant back to local midnight yields tomorrow's exact start.
+ *
+ * Example: startOfNextDayInZone(2026-11-01T12:00:00Z, 'America/New_York')
+ *   → 2026-11-02T05:00:00Z  (Nov 2 is EST, UTC-5), not the 04:00Z a +24h step
+ *     from the Nov 1 EDT midnight would wrongly produce.
+ */
+export function startOfNextDayInZone(now: Date, tz: string): Date {
+  const startToday = startOfDayInZone(now, tz);
+  const midNextDay = new Date(startToday.getTime() + 36 * 60 * 60 * 1000);
+  return startOfDayInZone(midNextDay, tz);
+}

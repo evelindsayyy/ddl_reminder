@@ -8,7 +8,7 @@ import {
   reminderEmailFor,
   sendEmail,
 } from '@/lib/email';
-import { startOfDayInZone } from '@/lib/datetime';
+import { startOfDayInZone, startOfNextDayInZone } from '@/lib/datetime';
 import { scheduleAssignmentReminders } from '@/lib/reminders';
 import { firstRow } from '@/lib/supabaseJoin';
 import { isTerminalStage } from '@/lib/applicationStage';
@@ -311,8 +311,11 @@ async function runDailyDigest(
     });
 
     // Today's items: due_at within the user's calendar day, open only.
+    // Bound with the zone-aware next-day start (not +24h): a DST-transition
+    // day is 23/25h long, so a fixed 24h step would leak tomorrow's first hour
+    // in or drop today's last hour (CLAUDE.md §5).
     const startOfToday = startOfDayInZone(now, tz);
-    const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+    const startOfTomorrow = startOfNextDayInZone(now, tz);
 
     const items = await admin
       .from('assignments')

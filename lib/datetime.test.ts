@@ -7,7 +7,7 @@
 // pins an exact UTC instant computed by hand; inputs are fixed Dates so the
 // results never depend on the machine clock or the server's own timezone.
 
-import { startOfDayInZone } from './datetime';
+import { startOfDayInZone, startOfNextDayInZone } from './datetime';
 
 let passed = 0;
 let failed = 0;
@@ -43,6 +43,34 @@ eq('NY pre-midnight instant → previous calendar day', day('2026-07-05T03:30:00
 eq('Tokyo → midnight is JST (+9)', day('2026-07-05T20:00:00Z', 'Asia/Tokyo'), '2026-07-05T15:00:00.000Z');
 // UTC zone: midnight is 00:00 UTC on the same date.
 eq('UTC → midnight is 00:00 UTC', day('2026-07-05T12:00:00Z', 'UTC'), '2026-07-05T00:00:00.000Z');
+
+// ---- startOfNextDayInZone: the exclusive upper bound of a "today" window. ----
+// It must equal *tomorrow's* local midnight, which on a DST-transition day is
+// NOT `today's midnight + 24h` (the digest window's old bug). These pin the
+// difference explicitly.
+const nextDay = (iso: string, tz: string): string =>
+  startOfNextDayInZone(new Date(iso), tz).toISOString();
+
+// Ordinary summer day: Jul 5 → Jul 6 midnight EDT (-4) = 04:00 UTC.
+eq('NY next day (summer)', nextDay('2026-07-05T12:00:00Z', 'America/New_York'), '2026-07-06T04:00:00.000Z');
+// Ordinary winter day: Jan 15 → Jan 16 midnight EST (-5) = 05:00 UTC.
+eq('NY next day (winter)', nextDay('2026-01-15T12:00:00Z', 'America/New_York'), '2026-01-16T05:00:00.000Z');
+
+// Spring forward: Mar 8 (EST -5, midnight 05:00Z) → Mar 9 midnight is EDT (-4)
+// = 04:00 UTC. A +24h step would wrongly give 05:00Z (01:00 EDT), leaking the
+// first hour of Mar 9 into Mar 8's window.
+eq('NY next day (spring-forward day)', nextDay('2026-03-08T12:00:00Z', 'America/New_York'), '2026-03-09T04:00:00.000Z');
+// Fall back: Nov 1 (EDT -4, midnight 04:00Z) → Nov 2 midnight is EST (-5) =
+// 05:00 UTC. A +24h step would wrongly give 04:00Z (23:00 EST Nov 1), dropping
+// the last hour of Nov 1.
+eq('NY next day (fall-back day)', nextDay('2026-11-01T12:00:00Z', 'America/New_York'), '2026-11-02T05:00:00.000Z');
+
+// Pre-midnight instant resolves to *its* zone-local day, then advances one day.
+eq('NY next day from pre-midnight instant', nextDay('2026-07-05T03:30:00Z', 'America/New_York'), '2026-07-05T04:00:00.000Z');
+
+// No-DST zones: plain +1 calendar day.
+eq('Tokyo next day', nextDay('2026-07-05T20:00:00Z', 'Asia/Tokyo'), '2026-07-06T15:00:00.000Z');
+eq('UTC next day', nextDay('2026-07-05T12:00:00Z', 'UTC'), '2026-07-06T00:00:00.000Z');
 
 console.log(`\ndatetime.test.ts — ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
