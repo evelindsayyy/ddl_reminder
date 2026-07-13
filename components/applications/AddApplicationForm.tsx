@@ -4,17 +4,7 @@ import { useState, useTransition, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { createApplication } from '@/lib/applications';
 import { APPLICATION_STAGES } from '@/lib/schemas';
-
-const STAGE_LABELS: Record<(typeof APPLICATION_STAGES)[number], string> = {
-  applied: 'Applied',
-  oa: 'OA',
-  phone_screen: 'Phone screen',
-  technical: 'Technical',
-  onsite: 'Onsite',
-  offer: 'Offer',
-  rejected: 'Rejected',
-  withdrawn: 'Withdrawn',
-};
+import { STAGE_LABELS } from '@/lib/applicationStage';
 
 export function AddApplicationForm() {
   const router = useRouter();

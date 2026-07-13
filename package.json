@@ -27,7 +27,9 @@
     "test:datetime": "tsx lib/datetime.test.ts",
     "test:urlguard": "tsx lib/urlGuard.test.ts",
     "test:supabasejoin": "tsx lib/supabaseJoin.test.ts",
-    "test": "tsx lib/parser/parser.assert.test.ts && tsx lib/recurrence.test.ts && tsx lib/bucket.test.ts && tsx lib/score.test.ts && tsx lib/canvas.test.ts && tsx lib/ics.test.ts && tsx lib/format.test.ts && tsx lib/email.test.ts && tsx lib/prefs.test.ts && tsx lib/colors.test.ts && tsx lib/applicationStage.test.ts && tsx lib/tags.test.ts && tsx lib/schemas.test.ts && tsx lib/assignmentFilter.test.ts && tsx lib/theme.test.ts && tsx lib/reminderSchedule.test.ts && tsx lib/datetime.test.ts && tsx lib/urlGuard.test.ts && tsx lib/supabaseJoin.test.ts",
+    "test:datetimelocal": "tsx lib/datetimeLocal.test.ts",
+    "test:apppatch": "tsx lib/applicationPatch.test.ts",
+    "test": "tsx lib/parser/parser.assert.test.ts && tsx lib/recurrence.test.ts && tsx lib/bucket.test.ts && tsx lib/score.test.ts && tsx lib/canvas.test.ts && tsx lib/ics.test.ts && tsx lib/format.test.ts && tsx lib/email.test.ts && tsx lib/prefs.test.ts && tsx lib/colors.test.ts && tsx lib/applicationStage.test.ts && tsx lib/tags.test.ts && tsx lib/schemas.test.ts && tsx lib/assignmentFilter.test.ts && tsx lib/theme.test.ts && tsx lib/reminderSchedule.test.ts && tsx lib/datetime.test.ts && tsx lib/urlGuard.test.ts && tsx lib/supabaseJoin.test.ts && tsx lib/datetimeLocal.test.ts && tsx lib/applicationPatch.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

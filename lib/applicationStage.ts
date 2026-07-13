@@ -59,3 +59,17 @@ export function resolveStageForLane(
   // targetLane === 'interview'
   return INTERVIEW_STAGES.includes(currentStage) ? currentStage : 'phone_screen';
 }
+
+// Human-readable label for each of the eight schema stages. Moved verbatim
+// from AddApplicationForm's local copy so any stage-move UI (kanban menu,
+// edit form) can share one source of truth.
+export const STAGE_LABELS: Record<ApplicationStage, string> = {
+  applied: 'Applied',
+  oa: 'OA',
+  phone_screen: 'Phone screen',
+  technical: 'Technical',
+  onsite: 'Onsite',
+  offer: 'Offer',
+  rejected: 'Rejected',
+  withdrawn: 'Withdrawn',
+};
