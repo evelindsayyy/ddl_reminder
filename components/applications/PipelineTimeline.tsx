@@ -2,11 +2,8 @@
 
 import { cn } from '@/lib/utils';
 import { formatDueAt, formatRelative } from '@/lib/format';
-import {
-  StageBadge,
-  toDisplayStage,
-  type ApplicationCardData,
-} from './ApplicationCard';
+import type { ApplicationCardData } from './ApplicationCard';
+import { ApplicationCardInteractive } from './ApplicationCardInteractive';
 
 export interface PipelineTimelineProps {
   applications: ApplicationCardData[];
@@ -43,7 +40,6 @@ export function PipelineTimeline({ applications, timezone }: PipelineTimelinePro
         const due = new Date(a.next_action_at as string).getTime();
         const overdue = due < now;
         const urgent = !overdue && (due - now) / (60 * 60 * 1000) < URGENCY_RED_HOURS;
-        const display = toDisplayStage(a.stage);
 
         return (
           <li key={a.id} className="relative">
@@ -78,17 +74,8 @@ export function PipelineTimeline({ applications, timezone }: PipelineTimelinePro
                 </span>
               ) : null}
             </div>
-            <div className="mt-1 rounded border border-ink-faint/40 bg-bg p-3">
-              <header className="flex items-baseline justify-between gap-2">
-                <div className="min-w-0">
-                  <span className="text-base font-semibold text-ink">{a.company}</span>{' '}
-                  <span className="font-mono text-[11px] text-ink-soft">{a.role}</span>
-                </div>
-                <StageBadge stage={display} />
-              </header>
-              {a.next_action ? (
-                <p className="mt-1 text-sm text-ink-soft leading-snug">{a.next_action}</p>
-              ) : null}
+            <div className="mt-1">
+              <ApplicationCardInteractive application={a} timezone={timezone} variant="timeline" />
             </div>
           </li>
         );

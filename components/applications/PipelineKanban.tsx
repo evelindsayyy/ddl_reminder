@@ -4,13 +4,12 @@ import { useOptimistic, useState, useTransition, type DragEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
-  ApplicationCard,
   toDisplayStage,
   type ApplicationCardData,
   type ApplicationStage,
   type DisplayStage,
 } from './ApplicationCard';
-import { ApplicationActions } from './ApplicationActions';
+import { ApplicationCardInteractive } from './ApplicationCardInteractive';
 import { moveApplicationToLane } from '@/lib/applications';
 
 const LANES: { key: DisplayStage; label: string }[] = [
@@ -131,17 +130,12 @@ export function PipelineKanban({ applications, timezone }: PipelineKanbanProps) 
                       onDragStart={(e) => onDragStart(e, a.id)}
                       className="cursor-grab active:cursor-grabbing"
                     >
-                      <ApplicationCard
+                      <ApplicationCardInteractive
                         application={a}
                         timezone={timezone}
                         variant="kanban"
-                        footer={
-                          <ApplicationActions
-                            application={a}
-                            onStageOptimistic={(s) =>
-                              startTransition(() => applyOptimistic({ id: a.id, stage: s }))
-                            }
-                          />
+                        onStageOptimistic={(s) =>
+                          startTransition(() => applyOptimistic({ id: a.id, stage: s }))
                         }
                       />
                     </div>
