@@ -21,15 +21,21 @@ export function ApplicationActions({ application: a, onEdit, onStageOptimistic }
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Timeline path has no onStageOptimistic, so the select would snap back to the
+  // old stage for the whole pending window. Hold the chosen stage locally until
+  // the refresh makes the prop truth. Harmless alongside the kanban's own optimism.
+  const [pendingStage, setPendingStage] = useState<ApplicationStage | null>(null);
 
   function onStageChange(next: ApplicationStage) {
     if (next === a.stage) return;
     setError(null);
+    setPendingStage(next);
     onStageOptimistic?.(next);
     startTransition(async () => {
       const res = await updateApplication(a.id, buildStageChangePatch(a, next));
       if (!res.ok) setError(res.error ?? 'move_failed');
       router.refresh();
+      setPendingStage(null);
     });
   }
 
@@ -49,7 +55,7 @@ export function ApplicationActions({ application: a, onEdit, onStageOptimistic }
     <div draggable={false} onPointerDown={(e) => e.stopPropagation()}>
       <div className="flex items-center gap-1.5">
         <select
-          value={a.stage}
+          value={pendingStage ?? a.stage}
           onChange={(e) => onStageChange(e.target.value as ApplicationStage)}
           disabled={pending}
           aria-label="Stage"

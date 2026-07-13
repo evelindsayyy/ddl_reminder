@@ -43,6 +43,20 @@ eq(
   { stage: 'phone_screen', nextActionAt: '2026-08-01T12:00:00.000Z' }
 );
 
+// Regression: PostgREST returns timestamptz with an offset (+00:00), which
+// z.string().datetime() rejects. The helper must normalize it to a Z instant.
+eq(
+  'terminal -> active with PostgREST offset timestamp: normalizes to Z',
+  buildStageChangePatch({ stage: 'rejected', next_action_at: '2026-08-01T12:00:00+00:00' }, 'phone_screen'),
+  { stage: 'phone_screen', nextActionAt: '2026-08-01T12:00:00.000Z' }
+);
+
+eq(
+  'terminal -> active with next_action_at: Z input stays Z output',
+  buildStageChangePatch({ stage: 'rejected', next_action_at: '2026-08-01T12:00:00.000Z' }, 'phone_screen'),
+  { stage: 'phone_screen', nextActionAt: '2026-08-01T12:00:00.000Z' }
+);
+
 eq(
   'terminal -> active without next_action_at: plain',
   buildStageChangePatch({ stage: 'withdrawn', next_action_at: null }, 'applied'),

@@ -110,6 +110,7 @@ export function ApplicationEditForm({ application: a, onCancel, onSaved }: Appli
           onChange={(e) => setNotes(e.target.value)}
           disabled={pending}
           rows={2}
+          maxLength={2000}
           placeholder="interviewer, prep links…"
           className={fieldClass}
         />
