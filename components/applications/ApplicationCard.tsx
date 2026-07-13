@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { formatDueAt, formatRelative } from '@/lib/format';
 import type { ApplicationStage } from '@/lib/schemas';
@@ -27,6 +28,10 @@ export interface ApplicationCardProps {
   timezone: string;
   variant: 'kanban' | 'timeline';
   className?: string;
+  // Optional interactive slot (stage select / edit / delete). Rendered as the
+  // last child of the card. Kept as a ReactNode so the card itself stays a pure,
+  // RSC-safe presentational component — interactivity lives in the passed node.
+  footer?: ReactNode;
 }
 
 export function ApplicationCard({
@@ -34,6 +39,7 @@ export function ApplicationCard({
   timezone,
   variant,
   className,
+  footer,
 }: ApplicationCardProps) {
   const display = toDisplayStage(a.stage);
   const next = a.next_action_at;
@@ -74,6 +80,10 @@ export function ApplicationCard({
             </div>
           ) : null}
         </div>
+      ) : null}
+
+      {footer ? (
+        <div className="mt-2 border-t border-dashed border-ink-faint/50 pt-2">{footer}</div>
       ) : null}
     </article>
   );

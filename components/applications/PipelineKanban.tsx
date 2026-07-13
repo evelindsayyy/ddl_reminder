@@ -7,8 +7,10 @@ import {
   ApplicationCard,
   toDisplayStage,
   type ApplicationCardData,
+  type ApplicationStage,
   type DisplayStage,
 } from './ApplicationCard';
+import { ApplicationActions } from './ApplicationActions';
 import { moveApplicationToLane } from '@/lib/applications';
 
 const LANES: { key: DisplayStage; label: string }[] = [
@@ -20,10 +22,9 @@ const LANES: { key: DisplayStage; label: string }[] = [
 
 const DT_KEY = 'application/x-ddl-app-id';
 
-interface MoveAction {
-  id: string;
-  lane: DisplayStage;
-}
+// Drag drops move by lane (preserving interview sub-stage via laneStageFor);
+// the actions <select> moves to a concrete 8-stage value directly.
+type OptimisticAction = { id: string; lane: DisplayStage } | { id: string; stage: ApplicationStage };
 
 export interface PipelineKanbanProps {
   applications: ApplicationCardData[];
@@ -33,12 +34,14 @@ export interface PipelineKanbanProps {
 export function PipelineKanban({ applications, timezone }: PipelineKanbanProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const [optimistic, applyOptimistic] = useOptimistic<ApplicationCardData[], MoveAction>(
+  const [optimistic, applyOptimistic] = useOptimistic<ApplicationCardData[], OptimisticAction>(
     applications,
     (state, action) =>
-      state.map((a) =>
-        a.id === action.id ? { ...a, stage: laneStageFor(a.stage, action.lane) } : a
-      )
+      state.map((a) => {
+        if (a.id !== action.id) return a;
+        const stage = 'stage' in action ? action.stage : laneStageFor(a.stage, action.lane);
+        return { ...a, stage };
+      })
   );
   const [hoverLane, setHoverLane] = useState<DisplayStage | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -128,7 +131,19 @@ export function PipelineKanban({ applications, timezone }: PipelineKanbanProps) 
                       onDragStart={(e) => onDragStart(e, a.id)}
                       className="cursor-grab active:cursor-grabbing"
                     >
-                      <ApplicationCard application={a} timezone={timezone} variant="kanban" />
+                      <ApplicationCard
+                        application={a}
+                        timezone={timezone}
+                        variant="kanban"
+                        footer={
+                          <ApplicationActions
+                            application={a}
+                            onStageOptimistic={(s) =>
+                              startTransition(() => applyOptimistic({ id: a.id, stage: s }))
+                            }
+                          />
+                        }
+                      />
                     </div>
                   ))}
                 </div>
