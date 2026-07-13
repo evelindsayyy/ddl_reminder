@@ -5,7 +5,11 @@
 // deadline slips silently, so the contract is worth pinning: fire_at =
 // due_at - offset_hours, past offsets skipped, bad input yields nothing.
 
-import { computeReminderFireTimes } from './reminderSchedule';
+import {
+  computeReminderFireTimes,
+  reminderFireAtIso,
+  reminderFireAtMs,
+} from './reminderSchedule';
 
 let passed = 0;
 let failed = 0;
@@ -93,6 +97,40 @@ const defaults = [168, 48, 12]; // 1 week, 2 days, 12 hours
   const notBefore = Math.floor(plan[0].fireAtMs / 1000);
   check('notBefore is integer seconds', Number.isInteger(notBefore));
   check('notBefore * 1000 <= fireAtMs', notBefore * 1000 <= plan[0].fireAtMs);
+}
+
+// --- reminderFireAtMs: pure anchor − offset arithmetic ------------------
+{
+  const anchor = new Date(now + 5 * 24 * HOUR).toISOString();
+  const anchorMs = new Date(anchor).getTime();
+  check('reminderFireAtMs = anchor - 48h',
+    reminderFireAtMs(anchor, 48) === anchorMs - 48 * HOUR,
+    `${reminderFireAtMs(anchor, 48)} vs ${anchorMs - 48 * HOUR}`);
+  check('reminderFireAtMs(0h) is the anchor itself',
+    reminderFireAtMs(anchor, 0) === anchorMs);
+  check('reminderFireAtMs on a bad anchor is NaN',
+    Number.isNaN(reminderFireAtMs('not-a-date', 12)));
+}
+
+// --- reminderFireAtIso: guarded ISO, null on bad anchor -----------------
+{
+  const anchor = new Date(now + 3 * 24 * HOUR).toISOString();
+  check('reminderFireAtIso matches new Date(fireAtMs).toISOString()',
+    reminderFireAtIso(anchor, 12) ===
+      new Date(new Date(anchor).getTime() - 12 * HOUR).toISOString());
+  check('reminderFireAtIso returns null (never throws) on a bad anchor',
+    reminderFireAtIso('not-a-date', 12) === null);
+}
+
+// --- the scheduler and the webhook must agree byte-for-byte -------------
+{
+  // computeReminderFireTimes stamps `reminders.fire_at`; the webhook later
+  // recomputes it via reminderFireAtIso to target that exact row. If these
+  // two ever diverge the "mark sent" update matches nothing, so pin equality.
+  const due = new Date(now + 10 * 24 * HOUR).toISOString();
+  const plan = computeReminderFireTimes(due, defaults, now);
+  const agree = plan.every((p) => reminderFireAtIso(due, p.offsetHours) === p.fireAtIso);
+  check('reminderFireAtIso reproduces every scheduled fire_at exactly', agree);
 }
 
 console.log(`\nreminderSchedule.test.ts — ${passed} passed, ${failed} failed`);

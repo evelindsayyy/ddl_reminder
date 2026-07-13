@@ -4,6 +4,7 @@ import { createClient as createAdmin, type SupabaseClient } from '@supabase/supa
 import { applicationReminderEmailFor, reminderEmailFor, sendEmail } from '@/lib/email';
 import { firstRow } from '@/lib/supabaseJoin';
 import { isTerminalStage } from '@/lib/applicationStage';
+import { reminderFireAtIso } from '@/lib/reminderSchedule';
 
 // QStash → here. Verify the signature, then look up the assignment +
 // recipient and send the reminder email. Mark the reminders row 'sent'.
@@ -86,10 +87,11 @@ export async function POST(request: NextRequest) {
   // near-now sweep only for legacy payloads that carry no offsetHours.
   const now = new Date();
   const newStatus = send.ok ? 'sent' : 'failed';
-  if (typeof payload.offsetHours === 'number') {
-    const fireAtIso = new Date(
-      new Date(a.due_at).getTime() - payload.offsetHours * 60 * 60 * 1000
-    ).toISOString();
+  const fireAtIso =
+    typeof payload.offsetHours === 'number'
+      ? reminderFireAtIso(a.due_at, payload.offsetHours)
+      : null;
+  if (fireAtIso) {
     await admin
       .from('reminders')
       .update({ status: newStatus, sent_at: now.toISOString() })
@@ -97,7 +99,8 @@ export async function POST(request: NextRequest) {
       .eq('status', 'scheduled')
       .eq('fire_at', fireAtIso);
   } else {
-    // Legacy payload with no offsetHours — fall back to the near-now sweep.
+    // Legacy payload with no offsetHours (or an unparseable anchor) — fall
+    // back to the near-now sweep.
     await admin
       .from('reminders')
       .update({ status: newStatus, sent_at: now.toISOString() })
@@ -169,10 +172,11 @@ async function handleApplicationReminder(
   // near-now sweep otherwise (same policy as assignments).
   const now = new Date();
   const newStatus = send.ok ? 'sent' : 'failed';
-  if (typeof offsetHours === 'number') {
-    const fireAtIso = new Date(
-      new Date(app.next_action_at).getTime() - offsetHours * 60 * 60 * 1000
-    ).toISOString();
+  const fireAtIso =
+    typeof offsetHours === 'number'
+      ? reminderFireAtIso(app.next_action_at, offsetHours)
+      : null;
+  if (fireAtIso) {
     await admin
       .from('reminders')
       .update({ status: newStatus, sent_at: now.toISOString() })
@@ -180,6 +184,8 @@ async function handleApplicationReminder(
       .eq('status', 'scheduled')
       .eq('fire_at', fireAtIso);
   } else {
+    // Legacy payload with no offsetHours (or an unparseable anchor) — fall
+    // back to the near-now sweep.
     await admin
       .from('reminders')
       .update({ status: newStatus, sent_at: now.toISOString() })

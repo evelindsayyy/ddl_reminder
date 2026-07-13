@@ -6,6 +6,8 @@
 // any fire_at already in the past is skipped (e.g. adding "due tomorrow" drops
 // the 1-week reminder).
 
+const MS_PER_HOUR = 60 * 60 * 1000;
+
 export interface PlannedReminder {
   /** The `reminder_offsets_hours` entry this reminder came from. */
   offsetHours: number;
@@ -13,6 +15,33 @@ export interface PlannedReminder {
   fireAtMs: number;
   /** Same instant as an ISO-8601 UTC string, for the `reminders.fire_at` column. */
   fireAtIso: string;
+}
+
+/**
+ * Absolute fire instant (epoch ms) for one reminder: `anchor − offsetHours`.
+ * `anchorIso` is the assignment's `due_at` or the application's
+ * `next_action_at` (both stored UTC). Returns `NaN` for an unparseable
+ * anchor — callers guard.
+ */
+export function reminderFireAtMs(anchorIso: string, offsetHours: number): number {
+  return new Date(anchorIso).getTime() - offsetHours * MS_PER_HOUR;
+}
+
+/**
+ * The same fire instant as an ISO-8601 UTC string, or `null` when the anchor
+ * is unparseable (so callers never reach `new Date(NaN).toISOString()`, which
+ * throws).
+ *
+ * This is the single source of truth for the `reminders.fire_at` value: the
+ * scheduler writes it (via `computeReminderFireTimes`) and the reminder webhook
+ * recomputes it to target the exact row it just delivered
+ * (`.eq('fire_at', …)`). Those two must agree byte-for-byte or the webhook's
+ * "mark sent" silently matches nothing and the sweeper resends — so both go
+ * through this helper.
+ */
+export function reminderFireAtIso(anchorIso: string, offsetHours: number): string | null {
+  const ms = reminderFireAtMs(anchorIso, offsetHours);
+  return Number.isNaN(ms) ? null : new Date(ms).toISOString();
 }
 
 /**
@@ -36,12 +65,11 @@ export function computeReminderFireTimes(
   offsetsHours: number[],
   nowMs: number
 ): PlannedReminder[] {
-  const dueMs = new Date(dueAtIso).getTime();
-  if (Number.isNaN(dueMs)) return [];
+  if (Number.isNaN(new Date(dueAtIso).getTime())) return [];
 
   const planned: PlannedReminder[] = [];
   for (const offsetHours of offsetsHours) {
-    const fireAtMs = dueMs - offsetHours * 60 * 60 * 1000;
+    const fireAtMs = reminderFireAtMs(dueAtIso, offsetHours);
     if (fireAtMs <= nowMs) continue; // skip offsets whose fire time has passed
     planned.push({
       offsetHours,
