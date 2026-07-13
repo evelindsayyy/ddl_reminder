@@ -1,10 +1,40 @@
+<div align="center">
+  <img src="public/icon.svg" width="84" alt="Deadline Tracker logo" />
+
 # Deadline Tracker
 
-A personal assignment and interview-prep tracker. Natural-language entry,
-email reminders, Apple Calendar subscription, mobile PWA.
+**A full-stack Next.js + Supabase web app I built and use every day** to stay on
+top of coursework and internship deadlines. Type a due date in plain English and
+it parses, schedules email reminders, syncs to Apple Calendar, imports from Canvas
+and Gradescope, and tracks application pipelines — deployed on Vercel as an
+installable mobile PWA.
 
-The canonical spec lives in [CLAUDE.md](CLAUDE.md). Read that first if you're
-extending the project — this README is the install + run guide.
+[![Next.js 14](https://img.shields.io/badge/Next.js-14-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
+&nbsp;[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+&nbsp;[![Supabase](https://img.shields.io/badge/Supabase-Postgres-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/)
+&nbsp;[![tests](https://img.shields.io/badge/tests-563%20passing-brightgreen)](.github/workflows/ci.yml)
+&nbsp;[![CI](https://github.com/evelindsayyy/ddl_reminder/actions/workflows/ci.yml/badge.svg)](https://github.com/evelindsayyy/ddl_reminder/actions/workflows/ci.yml)
+
+</div>
+
+The canonical spec lives in [CLAUDE.md](CLAUDE.md) — read that first if you're
+extending the project; this README is the install + run guide.
+
+## Stack
+
+| Layer          | Choice                              |
+|----------------|-------------------------------------|
+| Framework      | Next.js 14 App Router + TypeScript  |
+| Styling        | Tailwind CSS (hand-drawn type system: Patrick Hand / Caveat / JetBrains Mono) |
+| Database       | Supabase Postgres + Row-Level Security |
+| Auth           | Supabase Auth (email magic link)    |
+| Hosting        | Vercel                              |
+| Email          | Resend                              |
+| Job scheduler  | Upstash QStash                      |
+| Daily cron     | Vercel Cron                         |
+| NLP            | `chrono-node`                       |
+| Calendar out   | `ical-generator`                    |
+| Time math      | `date-fns` + `date-fns-tz`          |
 
 ## What it does
 
@@ -34,29 +64,13 @@ extending the project — this README is the install + run guide.
 - **Mobile PWA.** Responsive collapse to single column, bottom tab nav, sticky
   add bar. Install to home screen.
 
-## Stack
-
-| Layer          | Choice                              |
-|----------------|-------------------------------------|
-| Framework      | Next.js 14 App Router + TypeScript  |
-| Styling        | Tailwind CSS (hand-drawn type system: Patrick Hand / Caveat / JetBrains Mono) |
-| Database       | Supabase Postgres + Row-Level Security |
-| Auth           | Supabase Auth (email magic link)    |
-| Hosting        | Vercel                              |
-| Email          | Resend                              |
-| Job scheduler  | Upstash QStash                      |
-| Daily cron     | Vercel Cron                         |
-| NLP            | `chrono-node`                       |
-| Calendar out   | `ical-generator`                    |
-| Time math      | `date-fns` + `date-fns-tz`          |
-
 ## Setup
 
 ### 1. Clone and install
 
 ```bash
-git clone git@github.com:evelindsayyy/DDLReminder.git
-cd DDLReminder
+git clone git@github.com:evelindsayyy/ddl_reminder.git
+cd ddl_reminder
 npm install
 ```
 
