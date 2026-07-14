@@ -3,6 +3,8 @@
 import { useState, useTransition, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatDueAt } from '@/lib/format';
+import { useToast } from '@/components/ui/Toast';
+import { humanizeError } from '@/lib/errorCopy';
 
 interface Props {
   appUrl: string;
@@ -24,6 +26,7 @@ export default function IntegrationsPanel({
   canvasLastSyncError,
 }: Props) {
   const router = useRouter();
+  const { toast } = useToast();
   const [pending, start] = useTransition();
   const [icsToken, setIcsToken] = useState(initialIcsToken);
   const [gradescopeToken, setGradescopeToken] = useState(initialGradescopeToken);
@@ -40,8 +43,12 @@ export default function IntegrationsPanel({
     if (!confirm('Regenerate calendar URL? Old subscription will stop receiving updates.')) return;
     start(async () => {
       const res = await fetch('/api/ics-token/rotate', { method: 'POST' });
-      const j = await res.json();
-      if (res.ok && j.token) setIcsToken(j.token);
+      const j = await res.json().catch(() => ({}));
+      if (res.ok && j.token) {
+        setIcsToken(j.token);
+      } else {
+        toast(humanizeError('rotate_failed'));
+      }
       router.refresh();
     });
   }
@@ -49,8 +56,9 @@ export default function IntegrationsPanel({
   async function copy(text: string) {
     try {
       await navigator.clipboard.writeText(text);
+      toast('Copied.', { tone: 'success' });
     } catch {
-      // ignore
+      toast(humanizeError('copy_failed'));
     }
   }
 
@@ -95,7 +103,10 @@ export default function IntegrationsPanel({
     setBookmarkletJs(null);
     start(async () => {
       const res = await fetch('/api/bookmarklet');
-      if (!res.ok) return;
+      if (!res.ok) {
+        toast(humanizeError('rotate_failed'));
+        return;
+      }
       const text = await res.text();
       setBookmarkletJs(text);
       // Always pull the (possibly newly-created) token in.
@@ -103,6 +114,8 @@ export default function IntegrationsPanel({
       if (tokenRes.ok) {
         const { token } = await tokenRes.json();
         setGradescopeToken(token);
+      } else {
+        toast(humanizeError('rotate_failed'));
       }
     });
   }
@@ -111,11 +124,17 @@ export default function IntegrationsPanel({
     if (!confirm('Regenerate Gradescope sync token? Old bookmarklet stops working.')) return;
     start(async () => {
       const res = await fetch('/api/gradescope-token/rotate', { method: 'POST' });
-      const j = await res.json();
-      if (res.ok && j.token) setGradescopeToken(j.token);
+      const j = await res.json().catch(() => ({}));
+      if (res.ok && j.token) {
+        setGradescopeToken(j.token);
+      } else {
+        toast(humanizeError('rotate_failed'));
+        return;
+      }
       // Also refresh the bookmarklet text to embed the new token.
       const blRes = await fetch('/api/bookmarklet');
       if (blRes.ok) setBookmarkletJs(await blRes.text());
+      else toast(humanizeError('rotate_failed'));
     });
   }
 

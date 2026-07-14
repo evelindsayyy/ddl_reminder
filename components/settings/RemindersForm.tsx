@@ -2,6 +2,8 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/ui/Toast';
+import { humanizeError } from '@/lib/errorCopy';
 
 interface Props {
   initialOffsets: number[];
@@ -11,11 +13,11 @@ const PRESETS = [168, 72, 48, 24, 12, 6, 1];
 
 export default function RemindersForm({ initialOffsets }: Props) {
   const router = useRouter();
+  const { toast } = useToast();
   const [offsets, setOffsets] = useState<number[]>(initialOffsets);
   const [draft, setDraft] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
 
   function add(value: number) {
     if (Number.isNaN(value) || value < 1) return;
@@ -31,7 +33,6 @@ export default function RemindersForm({ initialOffsets }: Props) {
     e.preventDefault();
     setSaving(true);
     setMsg(null);
-    setErr(null);
     try {
       const res = await fetch('/api/settings', {
         method: 'PATCH',
@@ -45,7 +46,7 @@ export default function RemindersForm({ initialOffsets }: Props) {
       setMsg('saved.');
       router.refresh();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'save failed');
+      toast(humanizeError(e instanceof Error ? e.message : 'save_failed'));
     } finally {
       setSaving(false);
     }
@@ -116,7 +117,6 @@ export default function RemindersForm({ initialOffsets }: Props) {
           {saving ? 'saving…' : 'save offsets'}
         </button>
         {msg ? <span className="font-mono text-[11px] text-success">{msg}</span> : null}
-        {err ? <span className="font-mono text-[11px] text-urgent">{err}</span> : null}
       </div>
     </form>
   );

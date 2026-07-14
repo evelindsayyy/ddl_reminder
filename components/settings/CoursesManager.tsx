@@ -4,6 +4,8 @@ import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { COURSE_COLOR_PALETTE } from '@/lib/colors';
 import { CourseChip } from '@/components/ui/CourseChip';
+import { useToast } from '@/components/ui/Toast';
+import { humanizeError } from '@/lib/errorCopy';
 
 export interface CourseRow {
   id: string;
@@ -18,11 +20,15 @@ interface Props {
 
 export default function CoursesManager({ courses }: Props) {
   const router = useRouter();
+  const { toast } = useToast();
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Id of the row with an outstanding update/delete — its controls disable
+  // while the request is in flight (create has its own `busy`).
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   async function onCreate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -47,7 +53,7 @@ export default function CoursesManager({ courses }: Props) {
       setName('');
       router.refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Unexpected error');
+      toast(humanizeError(err instanceof Error ? err.message : 'create_failed'));
     } finally {
       setBusy(false);
     }
@@ -55,16 +61,20 @@ export default function CoursesManager({ courses }: Props) {
 
   async function onDelete(course: CourseRow) {
     if (!confirm(`Delete course ${course.code}? Assignments keep their data but lose the color label.`)) return;
+    setPendingId(course.id);
     try {
       const res = await fetch(`/api/courses/${course.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error(`DELETE ${res.status}`);
       router.refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Unexpected error');
+      toast(humanizeError(err instanceof Error ? err.message : 'delete_failed'));
+    } finally {
+      setPendingId(null);
     }
   }
 
   async function onUpdate(course: CourseRow, patch: Partial<Pick<CourseRow, 'code' | 'name' | 'color'>>) {
+    setPendingId(course.id);
     try {
       const res = await fetch(`/api/courses/${course.id}`, {
         method: 'PATCH',
@@ -78,7 +88,9 @@ export default function CoursesManager({ courses }: Props) {
       setEditingId(null);
       router.refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Unexpected error');
+      toast(humanizeError(err instanceof Error ? err.message : 'update_failed'));
+    } finally {
+      setPendingId(null);
     }
   }
 
@@ -120,12 +132,19 @@ export default function CoursesManager({ courses }: Props) {
         <ul className="space-y-2">
           {courses.map((c) => {
             const isEditing = editingId === c.id;
+            const rowPending = pendingId === c.id;
             return (
               <li
                 key={c.id}
-                className="flex flex-wrap items-center gap-3 rounded border border-ink-faint/40 bg-bg p-2"
+                className={`flex flex-wrap items-center gap-3 rounded border border-ink-faint/40 bg-bg p-2${
+                  rowPending ? ' pointer-events-none opacity-60' : ''
+                }`}
               >
-                <ColorPicker value={c.color} onChange={(color) => onUpdate(c, { color })} />
+                <ColorPicker
+                  value={c.color}
+                  disabled={rowPending}
+                  onChange={(color) => onUpdate(c, { color })}
+                />
                 {isEditing ? (
                   <EditForm
                     course={c}
@@ -141,14 +160,16 @@ export default function CoursesManager({ courses }: Props) {
                     <button
                       type="button"
                       onClick={() => setEditingId(c.id)}
-                      className="font-mono text-[11px] text-ink-soft hover:text-ink"
+                      disabled={rowPending}
+                      className="font-mono text-[11px] text-ink-soft hover:text-ink disabled:opacity-60"
                     >
                       edit
                     </button>
                     <button
                       type="button"
                       onClick={() => onDelete(c)}
-                      className="font-mono text-[11px] text-ink-faint hover:text-urgent"
+                      disabled={rowPending}
+                      className="font-mono text-[11px] text-ink-faint hover:text-urgent disabled:opacity-60"
                     >
                       delete
                     </button>
@@ -163,15 +184,24 @@ export default function CoursesManager({ courses }: Props) {
   );
 }
 
-function ColorPicker({ value, onChange }: { value: string; onChange: (color: string) => void }) {
+function ColorPicker({
+  value,
+  onChange,
+  disabled = false,
+}: {
+  value: string;
+  onChange: (color: string) => void;
+  disabled?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        disabled={disabled}
         aria-label="Change color"
-        className="h-6 w-6 rounded-full border border-ink-faint"
+        className="h-6 w-6 rounded-full border border-ink-faint disabled:opacity-60"
         style={{ backgroundColor: value }}
       />
       {open ? (

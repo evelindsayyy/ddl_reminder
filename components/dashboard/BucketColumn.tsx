@@ -12,6 +12,8 @@ export interface BucketColumnProps {
   timezone: string;
   // Forwarded from DashboardBuckets so optimistic state lives in one place.
   fadingIds: ReadonlySet<string>;
+  // Ids with an outstanding mark-done PATCH — the card dims + disables.
+  pendingIds: ReadonlySet<string>;
   onToggleDone: (id: string, completedAt: string | null) => void;
   // Visual emphasis — true for "today" + the overdue banner.
   urgent?: boolean;
@@ -24,6 +26,7 @@ export function BucketColumn({
   items,
   timezone,
   fadingIds,
+  pendingIds,
   onToggleDone,
   urgent = false,
   flat = false,
@@ -64,6 +67,7 @@ export function BucketColumn({
               timezone={timezone}
               onToggleDone={onToggleDone}
               fading={fadingIds.has(a.id)}
+              pending={pendingIds.has(a.id)}
               density="comfortable"
             />
           ))}

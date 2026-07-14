@@ -2,6 +2,8 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/ui/Toast';
+import { humanizeError } from '@/lib/errorCopy';
 
 interface Props {
   initialSemesterEndDate: string | null;
@@ -9,15 +11,14 @@ interface Props {
 
 export default function SettingsForm({ initialSemesterEndDate }: Props) {
   const router = useRouter();
+  const { toast } = useToast();
   const [semesterEnd, setSemesterEnd] = useState(initialSemesterEndDate ?? '');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
-    setError(null);
     setMessage(null);
     try {
       const res = await fetch('/api/settings', {
@@ -32,7 +33,7 @@ export default function SettingsForm({ initialSemesterEndDate }: Props) {
       setMessage('saved.');
       router.refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Unexpected error');
+      toast(humanizeError(err instanceof Error ? err.message : 'save_failed'));
     } finally {
       setSaving(false);
     }
@@ -56,7 +57,6 @@ export default function SettingsForm({ initialSemesterEndDate }: Props) {
         {saving ? 'saving…' : 'save'}
       </button>
       {message ? <span className="font-mono text-[11px] text-success">{message}</span> : null}
-      {error ? <span className="font-mono text-[11px] text-urgent">{error}</span> : null}
     </form>
   );
 }

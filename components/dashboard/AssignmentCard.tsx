@@ -51,6 +51,9 @@ export interface AssignmentCardProps {
   // When true, the card shrinks + fades out over 200ms — used by the dashboard
   // mid-mark-done before the row is filtered out of the list entirely.
   fading?: boolean;
+  // When true, a mutation for this card is in flight — the card dims and its
+  // checkbox disables until the refresh lands. Fade takes visual precedence.
+  pending?: boolean;
 }
 
 const URGENCY_RED_HOURS = 12;
@@ -64,6 +67,7 @@ export function AssignmentCard({
   onDelete,
   inline = false,
   fading = false,
+  pending = false,
 }: AssignmentCardProps) {
   const [editing, setEditing] = useState(false);
   const isDone = a.completed_at !== null;
@@ -106,6 +110,7 @@ export function AssignmentCard({
           ? 'border-ink-faint/40 bg-bg-soft text-ink-soft'
           : 'border-ink-faint/40 bg-bg hover:border-ink-faint',
         inline && 'rounded-none border-x-0 border-t-0',
+        pending && !fading && 'pointer-events-none opacity-60',
         fading && 'pointer-events-none -my-px max-h-0 overflow-hidden border-transparent !p-0 opacity-0'
       )}
     >
@@ -115,8 +120,9 @@ export function AssignmentCard({
         aria-checked={isDone}
         aria-label={isDone ? 'Mark undone' : 'Mark done'}
         onClick={handleToggle}
+        disabled={pending}
         className={cn(
-          'mt-0.5 inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-sm border transition-colors duration-150',
+          'mt-0.5 inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-sm border transition-colors duration-150 disabled:cursor-not-allowed',
           isDone
             ? 'border-success bg-success text-bg'
             : 'border-ink-faint hover:border-ink'

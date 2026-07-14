@@ -6,6 +6,8 @@ import { bucketAssignments } from '@/lib/bucket';
 import { compareDueThenEffort } from '@/lib/score';
 import { BucketColumn } from '@/components/dashboard/BucketColumn';
 import type { AssignmentCardData } from '@/components/dashboard/AssignmentCard';
+import { useToast } from '@/components/ui/Toast';
+import { humanizeError } from '@/lib/errorCopy';
 
 interface ToggleAction {
   id: string;
@@ -28,6 +30,7 @@ export function DashboardBuckets({
   nowIso,
 }: DashboardBucketsProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [, startTransition] = useTransition();
   const [optimistic, applyOptimistic] = useOptimistic<AssignmentCardData[], ToggleAction>(
     assignments,
@@ -35,6 +38,9 @@ export function DashboardBuckets({
       state.map((a) => (a.id === action.id ? { ...a, completed_at: action.completedAt } : a))
   );
   const [fadingIds, setFadingIds] = useState<ReadonlySet<string>>(new Set());
+  // Per-item in-flight set — the card dims + its checkbox disables while the
+  // PATCH is outstanding (mirrors the existing fade-by-id pattern).
+  const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(new Set());
 
   // Stable bucket boundary — derived from nowIso so SSR and CSR agree on
   // which row counts as "today". Refreshes naturally when the server rerenders.
@@ -48,6 +54,7 @@ export function DashboardBuckets({
     if (completedAt) {
       setFadingIds((prev) => new Set(prev).add(id));
     }
+    setPendingIds((prev) => new Set(prev).add(id));
     startTransition(() => {
       applyOptimistic({ id, completedAt });
     });
@@ -60,12 +67,19 @@ export function DashboardBuckets({
           body: JSON.stringify({ completedAt }),
         });
         if (!res.ok) throw new Error(`PATCH ${res.status}`);
-      } catch {
-        // Server roll-back via refresh
+      } catch (err) {
+        // Optimistic state is rolled back by the refresh below; the toast is
+        // the only user-facing signal that the mark-done didn't stick.
+        toast(humanizeError(err instanceof Error ? err.message : 'save_failed'));
       } finally {
         // Wait for the fade animation to complete, then revalidate.
         setTimeout(() => {
           setFadingIds((prev) => {
+            const n = new Set(prev);
+            n.delete(id);
+            return n;
+          });
+          setPendingIds((prev) => {
             const n = new Set(prev);
             n.delete(id);
             return n;
@@ -93,6 +107,7 @@ export function DashboardBuckets({
           items={openOnly(buckets.overdue)}
           timezone={timezone}
           fadingIds={fadingIds}
+          pendingIds={pendingIds}
           onToggleDone={onToggleDone}
         />
       ) : null}
@@ -104,6 +119,7 @@ export function DashboardBuckets({
           items={buckets.today}
           timezone={timezone}
           fadingIds={fadingIds}
+          pendingIds={pendingIds}
           onToggleDone={onToggleDone}
         />
         <BucketColumn
@@ -111,6 +127,7 @@ export function DashboardBuckets({
           items={buckets.thisWeek}
           timezone={timezone}
           fadingIds={fadingIds}
+          pendingIds={pendingIds}
           onToggleDone={onToggleDone}
         />
         <BucketColumn
@@ -118,6 +135,7 @@ export function DashboardBuckets({
           items={buckets.later}
           timezone={timezone}
           fadingIds={fadingIds}
+          pendingIds={pendingIds}
           onToggleDone={onToggleDone}
         />
       </div>
@@ -129,11 +147,13 @@ function OverdueBanner({
   items,
   timezone,
   fadingIds,
+  pendingIds,
   onToggleDone,
 }: {
   items: AssignmentCardData[];
   timezone: string;
   fadingIds: ReadonlySet<string>;
+  pendingIds: ReadonlySet<string>;
   onToggleDone: (id: string, completedAt: string | null) => void;
 }) {
   if (items.length === 0) return null;
@@ -153,6 +173,7 @@ function OverdueBanner({
         items={items}
         timezone={timezone}
         fadingIds={fadingIds}
+        pendingIds={pendingIds}
         onToggleDone={onToggleDone}
       />
     </section>

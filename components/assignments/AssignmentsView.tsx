@@ -11,6 +11,8 @@ import { GroupedByCourseList } from './GroupedByCourseList';
 import { CalendarMonthView } from './CalendarMonthView';
 import { SwimLaneTimeline } from './SwimLaneTimeline';
 import { collectTags, filterByStatus, filterByTag } from '@/lib/assignmentFilter';
+import { useToast } from '@/components/ui/Toast';
+import { humanizeError } from '@/lib/errorCopy';
 
 export type ViewMode = 'list' | 'calendar' | 'timeline';
 export type FilterMode = 'all' | 'open' | 'done';
@@ -35,6 +37,7 @@ export function AssignmentsView({
 }: AssignmentsViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
   const [, startTransition] = useTransition();
 
   // Optimistic state — shared across views.
@@ -43,7 +46,6 @@ export function AssignmentsView({
     (state, action) =>
       state.map((a) => (a.id === action.id ? { ...a, completed_at: action.completedAt } : a))
   );
-  const [error, setError] = useState<string | null>(null);
 
   const [view, setView] = useState<ViewMode>(initialView);
   const filter: FilterMode = initialFilter;
@@ -72,7 +74,6 @@ export function AssignmentsView({
   }
 
   async function onToggleDone(id: string, completedAt: string | null) {
-    setError(null);
     startTransition(() => applyOptimistic({ id, completedAt }));
     try {
       const res = await fetch(`/api/assignments/${id}`, {
@@ -83,7 +84,7 @@ export function AssignmentsView({
       if (!res.ok) throw new Error(`PATCH ${res.status}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'mark-done failed');
+      toast(humanizeError(err instanceof Error ? err.message : 'save_failed'));
       router.refresh();
     }
   }
@@ -93,7 +94,6 @@ export function AssignmentsView({
     patch: AssignmentEditPatch,
     scope: 'one' | 'series' = 'one'
   ) {
-    setError(null);
     try {
       const url =
         scope === 'series' ? `/api/assignments/${id}?scope=series` : `/api/assignments/${id}`;
@@ -115,7 +115,7 @@ export function AssignmentsView({
       }
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'save failed');
+      toast(humanizeError(err instanceof Error ? err.message : 'save_failed'));
       router.refresh();
     }
   }
@@ -127,13 +127,12 @@ export function AssignmentsView({
       ? 'Delete the rest of this recurring series (occurrences after now)?'
       : `Delete "${a?.title ?? 'this assignment'}"?`;
     if (!confirm(msg)) return;
-    setError(null);
     try {
       const res = await fetch(`/api/assignments/${id}?scope=${scope}`, { method: 'DELETE' });
       if (!res.ok) throw new Error(`DELETE ${res.status}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'delete failed');
+      toast(humanizeError(err instanceof Error ? err.message : 'delete_failed'));
       router.refresh();
     }
   }
@@ -195,12 +194,6 @@ export function AssignmentsView({
             />
           ))}
         </div>
-      ) : null}
-
-      {error ? (
-        <p className="rounded border border-urgent/40 bg-urgent/5 p-2 text-xs text-urgent">
-          {error}
-        </p>
       ) : null}
 
       {view === 'list' ? (

@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { formatDueAt } from '@/lib/format';
+import { useToast } from '@/components/ui/Toast';
+import { humanizeError } from '@/lib/errorCopy';
 
 interface Recurrence {
   interval: 1 | 2;
@@ -48,6 +50,7 @@ export default function QuickAdd({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
   const [input, setInput] = useState('');
   const [preview, setPreview] = useState<ParsePreview | null>(null);
   const [parsing, setParsing] = useState(false);
@@ -177,7 +180,9 @@ export default function QuickAdd({
       setRepeatInterval(1);
       router.refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Unexpected error');
+      // SAVE failures toast (they're an async mutation outcome, not form
+      // validation). The parse warning + confidence hint below stay inline.
+      toast(humanizeError(err instanceof Error ? err.message : 'save_failed'));
     } finally {
       setSubmitting(false);
     }
