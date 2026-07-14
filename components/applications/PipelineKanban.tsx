@@ -46,6 +46,9 @@ export function PipelineKanban({ applications, timezone }: PipelineKanbanProps) 
       })
   );
   const [hoverLane, setHoverLane] = useState<DisplayStage | null>(null);
+  // Cards in edit mode opt out of drag so form interaction never starts an
+  // HTML5 drag on the wrapper. Immutable Set updates (new Set per transition).
+  const [editingIds, setEditingIds] = useState<Set<string>>(() => new Set());
 
   const grouped: Record<DisplayStage, ApplicationCardData[]> = {
     applied: [],
@@ -122,7 +125,7 @@ export function PipelineKanban({ applications, timezone }: PipelineKanbanProps) 
                   {items.map((a) => (
                     <div
                       key={a.id}
-                      draggable
+                      draggable={!editingIds.has(a.id)}
                       onDragStart={(e) => onDragStart(e, a.id)}
                       className="cursor-grab active:cursor-grabbing"
                     >
@@ -132,6 +135,14 @@ export function PipelineKanban({ applications, timezone }: PipelineKanbanProps) 
                         variant="kanban"
                         onStageOptimistic={(s) =>
                           startTransition(() => applyOptimistic({ id: a.id, stage: s }))
+                        }
+                        onEditingChange={(editing) =>
+                          setEditingIds((prev) => {
+                            const next = new Set(prev);
+                            if (editing) next.add(a.id);
+                            else next.delete(a.id);
+                            return next;
+                          })
                         }
                       />
                     </div>

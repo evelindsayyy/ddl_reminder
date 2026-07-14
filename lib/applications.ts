@@ -143,10 +143,11 @@ export async function moveApplicationToLane(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  // Read current stage so we can preserve interview sub-stage if applicable.
+  // Read current stage so we can preserve interview sub-stage if applicable;
+  // next_action_at lets us re-arm reminders when a card leaves a terminal lane.
   const { data: current, error: readErr } = await supabase
     .from('applications')
-    .select('stage')
+    .select('stage, next_action_at')
     .eq('id', id)
     .eq('user_id', user.id)
     .maybeSingle();
@@ -164,9 +165,22 @@ export async function moveApplicationToLane(
 
   if (error) return { ok: false, error: error.message };
 
-  // Dragging into a terminal lane retires any pending next-action reminders.
+  // Dragging into a terminal lane retires any pending next-action reminders;
+  // dragging OUT of a terminal lane (e.g. rejected → interviewing) re-arms them
+  // if the row still carries a next action, mirroring updateApplication's
+  // reschedule branch. Normalize the PostgREST timestamp (+00:00) to clean ISO
+  // Z so downstream QStash/fire-time math sees the same shape the zod path emits.
   if (isTerminalStage(nextStage)) {
     void cancelApplicationReminders(user.id, id);
+  } else if (isTerminalStage(current.stage) && current.next_action_at) {
+    const prefs = await ensureUserPrefs(supabase, { id: user.id, email: user.email });
+    void scheduleApplicationReminders({
+      userId: user.id,
+      applicationId: id,
+      nextActionAtIso: new Date(current.next_action_at).toISOString(),
+      reminderOffsetsHours: prefs.reminder_offsets_hours,
+      appUrl: appUrl(),
+    });
   }
 
   revalidatePath('/applications');

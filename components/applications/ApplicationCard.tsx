@@ -69,7 +69,10 @@ export function ApplicationCard({
         <div className="mt-2 border-t border-dashed border-ink-faint/50 pt-2">
           <div className="text-[10px] font-medium uppercase tracking-wide text-ink-faint">next:</div>
           <div className="text-sm text-ink leading-snug">{a.next_action}</div>
-          {next ? (
+          {/* Timeline dedupes the due time: PipelineTimeline's rail already
+              renders formatDueAt · formatRelative with the `missed` styling, so
+              only the kanban variant prints it here. */}
+          {next && variant === 'kanban' ? (
             <div
               className={cn(
                 'mt-0.5 font-mono text-[11px]',
