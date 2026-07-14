@@ -33,19 +33,29 @@ export function ApplicationActions({ application: a, onEdit, onStageOptimistic }
     setPendingStage(next);
     onStageOptimistic?.(next);
     startTransition(async () => {
-      const res = await updateApplication(a.id, buildStageChangePatch(a, next));
-      if (!res.ok) toast(humanizeError(res.error ?? 'move_failed'));
-      router.refresh();
-      setPendingStage(null);
+      try {
+        const res = await updateApplication(a.id, buildStageChangePatch(a, next));
+        if (!res.ok) toast(humanizeError(res.error ?? 'move_failed'));
+      } catch {
+        toast(humanizeError('move_failed'));
+      } finally {
+        router.refresh();
+        setPendingStage(null);
+      }
     });
   }
 
   function onDelete() {
     if (!confirm(`Delete "${a.company} — ${a.role}"?`)) return;
     startTransition(async () => {
-      const res = await deleteApplication(a.id);
-      if (!res.ok) toast(humanizeError(res.error ?? 'delete_failed'));
-      router.refresh();
+      try {
+        const res = await deleteApplication(a.id);
+        if (!res.ok) toast(humanizeError(res.error ?? 'delete_failed'));
+      } catch {
+        toast(humanizeError('delete_failed'));
+      } finally {
+        router.refresh();
+      }
     });
   }
 

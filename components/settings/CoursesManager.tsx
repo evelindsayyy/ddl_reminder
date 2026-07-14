@@ -26,9 +26,21 @@ export default function CoursesManager({ courses }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  // Id of the row with an outstanding update/delete — its controls disable
-  // while the request is in flight (create has its own `busy`).
-  const [pendingId, setPendingId] = useState<string | null>(null);
+  // Ids of rows with an outstanding update/delete — each row's controls disable
+  // while its own request is in flight (create has its own `busy`). A Set so
+  // concurrent per-row actions don't clobber one another (immutable updates).
+  const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(new Set());
+
+  function addPending(id: string) {
+    setPendingIds((prev) => new Set(prev).add(id));
+  }
+  function removePending(id: string) {
+    setPendingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }
 
   async function onCreate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -61,7 +73,7 @@ export default function CoursesManager({ courses }: Props) {
 
   async function onDelete(course: CourseRow) {
     if (!confirm(`Delete course ${course.code}? Assignments keep their data but lose the color label.`)) return;
-    setPendingId(course.id);
+    addPending(course.id);
     try {
       const res = await fetch(`/api/courses/${course.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error(`DELETE ${res.status}`);
@@ -69,12 +81,12 @@ export default function CoursesManager({ courses }: Props) {
     } catch (err: unknown) {
       toast(humanizeError(err instanceof Error ? err.message : 'delete_failed'));
     } finally {
-      setPendingId(null);
+      removePending(course.id);
     }
   }
 
   async function onUpdate(course: CourseRow, patch: Partial<Pick<CourseRow, 'code' | 'name' | 'color'>>) {
-    setPendingId(course.id);
+    addPending(course.id);
     try {
       const res = await fetch(`/api/courses/${course.id}`, {
         method: 'PATCH',
@@ -90,7 +102,7 @@ export default function CoursesManager({ courses }: Props) {
     } catch (err: unknown) {
       toast(humanizeError(err instanceof Error ? err.message : 'update_failed'));
     } finally {
-      setPendingId(null);
+      removePending(course.id);
     }
   }
 
@@ -132,7 +144,7 @@ export default function CoursesManager({ courses }: Props) {
         <ul className="space-y-2">
           {courses.map((c) => {
             const isEditing = editingId === c.id;
-            const rowPending = pendingId === c.id;
+            const rowPending = pendingIds.has(c.id);
             return (
               <li
                 key={c.id}

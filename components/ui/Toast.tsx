@@ -5,7 +5,8 @@
 // here (paired with `humanizeError` at the call sites); form-validation strings
 // stay inline next to their field and never toast.
 //
-// - Region sits above the mobile bottom nav (`bottom-16 md:bottom-4`).
+// - Region clears the mobile add bar + nav safe-area
+//   (`bottom-[calc(7rem+env(safe-area-inset-bottom))] md:bottom-4`).
 // - `role="status"` + `aria-live="polite"` so screen readers announce toasts
 //   without interrupting; there is no aria-live precedent elsewhere in the app.
 // - Max 3 stacked (oldest is dropped when a 4th arrives).
@@ -105,7 +106,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div
         role="status"
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-16 z-50 flex flex-col items-center gap-2 px-4 md:bottom-4"
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(7rem+env(safe-area-inset-bottom))] z-50 flex flex-col items-center gap-2 px-4 md:bottom-4"
       >
         {toasts.map((t) => (
           <div
