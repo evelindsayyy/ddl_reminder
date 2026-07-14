@@ -11,21 +11,29 @@ export interface ApplicationCardInteractiveProps {
   variant: 'kanban' | 'timeline';
   className?: string;
   onStageOptimistic?: (stage: ApplicationStage) => void;
+  // Fired on every edit-mode transition so a drag-owning parent (PipelineKanban)
+  // can set draggable={!editing} on its wrapper — the authoritative drag opt-out.
+  onEditingChange?: (editing: boolean) => void;
 }
 
 // Owns per-card edit-mode state. Editing → the edit form in a bordered shell;
 // otherwise → the presentational card with an actions footer (stage select,
-// edit pencil, delete). The editing shell sets draggable={false} and stops
-// pointer-down propagation so that interacting with the form never starts an
-// HTML5 drag on the kanban's draggable wrapper (mirrors ApplicationActions).
+// edit pencil, delete). The editing shell keeps draggable={false} + a
+// pointer-down stop as belt-and-suspenders, but the real drag opt-out now lives
+// in the kanban wrapper via onEditingChange (see PipelineKanban editingIds).
 export function ApplicationCardInteractive({
   application: a,
   timezone,
   variant,
   className,
   onStageOptimistic,
+  onEditingChange,
 }: ApplicationCardInteractiveProps) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditingState] = useState(false);
+  const setEditing = (next: boolean) => {
+    setEditingState(next);
+    onEditingChange?.(next);
+  };
 
   if (editing) {
     return (
