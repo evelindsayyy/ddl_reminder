@@ -22,6 +22,7 @@
   --color-urgent: 217 74 56; /* #d94a38 */
   --color-success: 74 124 89; /* #4a7c59 */
   --color-info: 58 110 168; /* #3a6ea8 */
+  --color-warn: 181 122 43; /* #b57a2b — muted amber, matches the hand-drawn palette */
   --color-stage-applied: 82 82 82; /* #525252 */
   --color-stage-interview: 58 110 168; /* #3a6ea8 */
   --color-stage-offer: 74 124 89; /* #4a7c59 */
@@ -49,6 +50,7 @@
   --color-urgent: 240 115 95; /* #f0735f */
   --color-success: 111 174 128; /* #6fae80 */
   --color-info: 111 163 214; /* #6fa3d6 */
+  --color-warn: 224 180 95; /* #e0b45f — softened amber, legible on dark ground */
   --color-stage-applied: 138 136 130; /* #8a8882 */
   --color-stage-interview: 111 163 214; /* #6fa3d6 */
   --color-stage-offer: 111 174 128; /* #6fae80 */

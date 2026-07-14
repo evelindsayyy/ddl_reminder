@@ -231,7 +231,7 @@ export default function QuickAdd({
       />
 
       {preview ? (
-        <div className="mt-3 rounded-md bg-neutral-50 p-3 text-sm">
+        <div className="mt-3 rounded-md bg-bg-soft p-3 text-sm">
           <div className="flex flex-wrap items-center gap-2">
             {preview.courseCode ? (
               <span
@@ -239,7 +239,10 @@ export default function QuickAdd({
                 style={
                   matchedCourse
                     ? { backgroundColor: `${matchedCourse.color}20`, color: matchedCourse.color }
-                    : { backgroundColor: '#6366f120', color: '#6366f1' }
+                    : {
+                        backgroundColor: 'rgb(var(--color-info) / 0.125)',
+                        color: 'rgb(var(--color-info))',
+                      }
                 }
                 title={matchedCourse?.name ?? undefined}
               >
@@ -247,40 +250,40 @@ export default function QuickAdd({
                 {courseIsNew ? <span className="ml-1 opacity-70">(new)</span> : null}
               </span>
             ) : (
-              <span className="rounded bg-neutral-200 px-2 py-0.5 text-xs text-neutral-700">
+              <span className="rounded bg-bg-dim px-2 py-0.5 text-xs text-ink-soft">
                 no course
               </span>
             )}
-            <span className="rounded bg-neutral-200 px-2 py-0.5 text-xs text-neutral-700">
+            <span className="rounded bg-bg-dim px-2 py-0.5 text-xs text-ink-soft">
               {preview.type}
             </span>
             {preview.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800"
+                className="rounded bg-warn/15 px-2 py-0.5 text-xs text-warn"
               >
                 #{tag}
               </span>
             ))}
-            <span className="ml-auto text-xs text-neutral-500">
+            <span className="ml-auto text-xs text-ink-faint">
               conf {preview.confidence.toFixed(2)}
             </span>
           </div>
           <div className="mt-2 font-medium">{preview.title}</div>
-          <div className="text-xs text-neutral-600">
+          <div className="text-xs text-ink-soft">
             {preview.dueAt ? formatDueAt(preview.dueAt, timezone) : 'no due date'}
-            <span className="ml-1 text-neutral-400">(first occurrence)</span>
+            <span className="ml-1 text-ink-faint">(first occurrence)</span>
           </div>
 
           {preview.dueAt ? (
-            <div className="mt-2 rounded border border-indigo-200 bg-indigo-50 p-2 text-xs">
-              <label className="flex items-center gap-2 text-indigo-900">
+            <div className="mt-2 rounded border border-info/30 bg-info/5 p-2 text-xs">
+              <label className="flex items-center gap-2 text-ink">
                 <input type="checkbox" checked={recurring} onChange={toggleRecurring} />
                 <span className="font-medium">🔁 Repeat weekly</span>
               </label>
 
               {recurring ? (
-                <div className="mt-2 space-y-2 text-indigo-800">
+                <div className="mt-2 space-y-2 text-ink-soft">
                   <div className="flex flex-wrap gap-1">
                     {WEEKDAY_NAME.map((name, idx) => {
                       const on = weekdays.includes(idx);
@@ -292,8 +295,8 @@ export default function QuickAdd({
                           aria-pressed={on}
                           className={
                             on
-                              ? 'rounded bg-indigo-600 px-2 py-0.5 text-[11px] text-white'
-                              : 'rounded border border-indigo-300 bg-white px-2 py-0.5 text-[11px] text-indigo-700'
+                              ? 'rounded bg-info px-2 py-0.5 text-[11px] text-bg'
+                              : 'rounded border border-info/40 bg-bg px-2 py-0.5 text-[11px] text-info'
                           }
                         >
                           {name}
@@ -310,7 +313,7 @@ export default function QuickAdd({
                       id="repeat_interval"
                       value={repeatInterval}
                       onChange={(e) => setRepeatInterval(Number(e.target.value) === 2 ? 2 : 1)}
-                      className="rounded border border-indigo-300 bg-white px-1.5 py-0.5 text-[11px]"
+                      className="rounded border border-ink-faint bg-bg px-1.5 py-0.5 text-[11px]"
                     >
                       <option value={1}>weekly</option>
                       <option value={2}>every other week</option>
@@ -326,7 +329,7 @@ export default function QuickAdd({
                       type="date"
                       value={overrideUntil}
                       onChange={(e) => setOverrideUntil(e.target.value)}
-                      className="rounded border border-indigo-300 bg-white px-1.5 py-0.5 text-[11px]"
+                      className="rounded border border-ink-faint bg-bg px-1.5 py-0.5 text-[11px]"
                     />
                     {overrideUntil ? (
                       <button
@@ -340,9 +343,9 @@ export default function QuickAdd({
                   </div>
 
                   {recurrenceSummary ? (
-                    <div className="font-medium text-indigo-900">{recurrenceSummary.text}</div>
+                    <div className="font-medium text-ink">{recurrenceSummary.text}</div>
                   ) : (
-                    <div className="text-[11px] text-amber-700">
+                    <div className="text-[11px] text-warn">
                       Pick at least one weekday to save as a series.
                     </div>
                   )}
@@ -352,14 +355,14 @@ export default function QuickAdd({
           ) : null}
 
           {lowConfidence ? (
-            <div className="mt-2 text-xs text-amber-700">
+            <div className="mt-2 text-xs text-warn">
               Low confidence — double-check the fields before saving.
             </div>
           ) : null}
         </div>
       ) : null}
 
-      {error ? <div className="mt-2 text-sm text-red-600">{error}</div> : null}
+      {error ? <div className="mt-2 text-sm text-urgent">{error}</div> : null}
 
       <div className="mt-3 flex items-center gap-3">
         <button
@@ -370,7 +373,7 @@ export default function QuickAdd({
         >
           {submitting ? 'Saving…' : effectiveRecurrence ? 'Save series' : 'Save'}
         </button>
-        <span className="text-xs text-neutral-500">
+        <span className="text-xs text-ink-faint">
           {parsing ? 'parsing…' : 'tip: ⌘↵ to save'}
         </span>
       </div>
