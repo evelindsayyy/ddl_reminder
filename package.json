@@ -31,7 +31,8 @@
     "test:apppatch": "tsx lib/applicationPatch.test.ts",
     "test:errorcopy": "tsx lib/errorCopy.test.ts",
     "test": "tsx lib/parser/parser.assert.test.ts && tsx lib/recurrence.test.ts && tsx lib/bucket.test.ts && tsx lib/score.test.ts && tsx lib/canvas.test.ts && tsx lib/ics.test.ts && tsx lib/format.test.ts && tsx lib/email.test.ts && tsx lib/prefs.test.ts && tsx lib/colors.test.ts && tsx lib/applicationStage.test.ts && tsx lib/tags.test.ts && tsx lib/schemas.test.ts && tsx lib/assignmentFilter.test.ts && tsx lib/theme.test.ts && tsx lib/reminderSchedule.test.ts && tsx lib/datetime.test.ts && tsx lib/urlGuard.test.ts && tsx lib/supabaseJoin.test.ts && tsx lib/datetimeLocal.test.ts && tsx lib/applicationPatch.test.ts && tsx lib/errorCopy.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
@@ -52,15 +53,21 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^6.0.3",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.35",
+    "jsdom": "^29.1.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.10"
   }
 }
