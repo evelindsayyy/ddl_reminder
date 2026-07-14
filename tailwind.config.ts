@@ -37,6 +37,7 @@ const config: Config = {
         urgent: 'rgb(var(--color-urgent) / <alpha-value>)',
         success: 'rgb(var(--color-success) / <alpha-value>)',
         info: 'rgb(var(--color-info) / <alpha-value>)',
+        warn: 'rgb(var(--color-warn) / <alpha-value>)',
         // Application stage tints (mirrored from DESIGN_TOKENS.md §Stage colors)
         stage: {
           applied: 'rgb(var(--color-stage-applied) / <alpha-value>)',
