@@ -28,4 +28,4 @@ jobs:
         run: npm test
 
       - name: Vitest (route + component)
-        run: npx vitest run
+        run: npm run test:unit

@@ -525,6 +525,21 @@ git push   # Vercel auto-deploys main
 # (use the Upstash console — no CLI needed for personal scale)
 ```
 
+### Dual test harness (READ BEFORE PUSHING)
+
+There are **two separate test runners** — CI runs both as distinct steps, and
+so should you, locally, before pushing:
+
+| Command             | What it runs                                                          |
+|----------------------|------------------------------------------------------------------------|
+| `npm test`           | The **tsx pure-lib chain only** — one `tsx <file>.test.ts` per pure module (parser, recurrence, bucket, score, canvas, ics, format, email, prefs, colors, applicationStage, tags, schemas, assignmentFilter, theme, reminderSchedule, datetime, urlGuard, supabaseJoin, datetimeLocal, applicationPatch, errorCopy — see the `test` script in `package.json` for the exact chain). No DB, no React, no test framework — plain assertions, `process.exit(1)` on failure. |
+| `npm run test:unit`  | **vitest** route + component tests (webhook, cron, gradescope, assignments routes; toast/stage-actions/quickadd components). Needs jsdom + `@testing-library/react`. |
+| `npm run test:all`   | **Canonical local gate** — runs `npm test` then `vitest run`. Run this (not either alone) before pushing. |
+
+Don't assume `npm test` covers the vitest suites, or vice versa — they're
+disjoint file sets with disjoint runners. `npm run test:all` is the only
+command that covers both.
+
 ---
 
 ## 12. Environment variables

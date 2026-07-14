@@ -33,3 +33,7 @@ yarn-error.log*
 *.pem
 .vercel
 *.tsbuildinfo
+
+# process artifacts (repo root)
+.completion-audit.md
+.polish-report.md
