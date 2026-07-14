@@ -80,6 +80,16 @@ for (const code of NETWORK_CASES) {
   eq(`humanizeError(${JSON.stringify(code)})`, humanizeError(code), NETWORK);
 }
 
+// --- word-bounded network regex: "upload failed" must NOT false-match "load failed" ---
+// ("Upload failed: too large" contains the substring "oad failed" — there is no
+// word boundary before "load" inside "Upload", so this must NOT get the
+// connection copy; it falls through to the generic sentence instead.)
+eq(
+  'humanizeError("Upload failed: too large") is not the network copy',
+  humanizeError('Upload failed: too large'),
+  'Something went wrong — try again.'
+);
+
 // --- null / undefined / empty string -> generic sentence ---
 const GENERIC = 'Something went wrong — try again.';
 eq('humanizeError(null)', humanizeError(null), GENERIC);

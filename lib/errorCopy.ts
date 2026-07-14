@@ -32,8 +32,11 @@ const NETWORK_FAILURE =
 // `Failed to fetch` (Chrome/Firefox), `Load failed` (Safari), or a
 // `NetworkError ...` string. Call sites pass `err.message`, so this raw text
 // reaches humanizeError — match case-insensitively as a substring so the
-// wrapped Safari/Firefox variants are caught too.
-const NETWORK_ERROR = /(failed to fetch|load failed|networkerror)/i;
+// wrapped Safari/Firefox variants are caught too. Word-bounded (`\b`) so
+// action codes like `upload_failed` / "Upload failed: too large" don't false-
+// match on "...oad failed" inside "upload failed" — "upload" has no boundary
+// before "load".
+const NETWORK_ERROR = /\b(failed to fetch|load failed|networkerror)\b/i;
 
 // `PATCH 500`, `DELETE 404`, ... — the uppercase-HTTP-verb `verb ${status}` shape.
 const HTTP_VERB_STATUS = /^(PATCH|DELETE|POST|GET) \d+$/;
