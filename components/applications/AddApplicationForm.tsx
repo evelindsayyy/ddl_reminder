@@ -39,23 +39,29 @@ export function AddApplicationForm() {
     }
     setError(null);
     start(async () => {
-      const res = await createApplication({
-        company: company.trim(),
-        role: role.trim(),
-        stage,
-        nextAction: nextAction.trim() || null,
-        // datetime-local is browser-local wall time; toISOString() converts it
-        // to the UTC instant (stored as timestamptz per CLAUDE.md §5).
-        nextActionAt: nextActionAt ? new Date(nextActionAt).toISOString() : null,
-        notes: notes.trim() || null,
-      });
-      if (!res.ok) {
-        toast(humanizeError(res.error ?? 'create_failed'));
-        return;
+      try {
+        const res = await createApplication({
+          company: company.trim(),
+          role: role.trim(),
+          stage,
+          nextAction: nextAction.trim() || null,
+          // datetime-local is browser-local wall time; toISOString() converts it
+          // to the UTC instant (stored as timestamptz per CLAUDE.md §5).
+          nextActionAt: nextActionAt ? new Date(nextActionAt).toISOString() : null,
+          notes: notes.trim() || null,
+        });
+        if (!res.ok) {
+          toast(humanizeError(res.error ?? 'create_failed'));
+          return;
+        }
+        // reset/close only on success.
+        reset();
+        setOpen(false);
+      } catch {
+        toast(humanizeError('create_failed'));
+      } finally {
+        router.refresh();
       }
-      reset();
-      setOpen(false);
-      router.refresh();
     });
   }
 

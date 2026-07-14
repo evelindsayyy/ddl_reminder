@@ -47,7 +47,7 @@ export default function IntegrationsPanel({
       if (res.ok && j.token) {
         setIcsToken(j.token);
       } else {
-        toast(humanizeError('rotate_failed'));
+        toast(humanizeError(j.error ?? 'rotate_failed'));
       }
       router.refresh();
     });
@@ -104,7 +104,7 @@ export default function IntegrationsPanel({
     start(async () => {
       const res = await fetch('/api/bookmarklet');
       if (!res.ok) {
-        toast(humanizeError('rotate_failed'));
+        toast(humanizeError('bookmarklet_failed'));
         return;
       }
       const text = await res.text();
@@ -115,7 +115,7 @@ export default function IntegrationsPanel({
         const { token } = await tokenRes.json();
         setGradescopeToken(token);
       } else {
-        toast(humanizeError('rotate_failed'));
+        toast(humanizeError('bookmarklet_failed'));
       }
     });
   }

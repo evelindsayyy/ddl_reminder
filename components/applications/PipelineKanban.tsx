@@ -75,9 +75,14 @@ export function PipelineKanban({ applications, timezone }: PipelineKanbanProps) 
     if (toDisplayStage(current.stage) === lane) return;
     startTransition(() => applyOptimistic({ id, lane }));
     void (async () => {
-      const res = await moveApplicationToLane(id, lane);
-      if (!res.ok) toast(humanizeError(res.error ?? 'move_failed'));
-      router.refresh();
+      try {
+        const res = await moveApplicationToLane(id, lane);
+        if (!res.ok) toast(humanizeError(res.error ?? 'move_failed'));
+      } catch {
+        toast(humanizeError('move_failed'));
+      } finally {
+        router.refresh();
+      }
     })();
   }
 

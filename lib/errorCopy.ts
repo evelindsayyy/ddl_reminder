@@ -16,6 +16,7 @@ const EXACT_MATCH: Record<string, string> = {
   update_failed: "Couldn't update it — check your connection and try again.",
   sync_failed: "Sync didn't go through — try again in a moment.",
   rotate_failed: "Couldn't generate a new token — try again in a moment.",
+  bookmarklet_failed: "Couldn't build the bookmarklet — try again in a moment.",
   copy_failed: "Couldn't copy that — try again.",
   parse_failed: "Couldn't read that — check the format and try again.",
   invalid_input: "That didn't validate — check the fields and try again.",

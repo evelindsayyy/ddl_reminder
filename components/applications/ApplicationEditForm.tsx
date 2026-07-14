@@ -43,21 +43,26 @@ export function ApplicationEditForm({ application: a, onCancel, onSaved }: Appli
     // second-truncation drift — on saves that never touched the timestamp.
     const nextActionAtChanged = nextActionLocal !== isoToDatetimeLocal(a.next_action_at);
     startTransition(async () => {
-      const res = await updateApplication(a.id, {
-        company: company.trim(),
-        role: role.trim(),
-        nextAction: nextAction.trim() === '' ? null : nextAction.trim(),
-        // empty datetime-local clears the timestamp (send null); otherwise the
-        // browser-local wall time is converted to a UTC ISO instant.
-        ...(nextActionAtChanged ? { nextActionAt: datetimeLocalToIso(nextActionLocal) } : {}),
-        notes: notes.trim() === '' ? null : notes.trim(),
-      });
-      if (!res.ok) {
-        toast(humanizeError(res.error ?? 'save_failed'));
-        return;
+      try {
+        const res = await updateApplication(a.id, {
+          company: company.trim(),
+          role: role.trim(),
+          nextAction: nextAction.trim() === '' ? null : nextAction.trim(),
+          // empty datetime-local clears the timestamp (send null); otherwise the
+          // browser-local wall time is converted to a UTC ISO instant.
+          ...(nextActionAtChanged ? { nextActionAt: datetimeLocalToIso(nextActionLocal) } : {}),
+          notes: notes.trim() === '' ? null : notes.trim(),
+        });
+        if (!res.ok) {
+          toast(humanizeError(res.error ?? 'save_failed'));
+          return;
+        }
+        onSaved();
+      } catch {
+        toast(humanizeError('save_failed'));
+      } finally {
+        router.refresh();
       }
-      onSaved();
-      router.refresh();
     });
   }
 
