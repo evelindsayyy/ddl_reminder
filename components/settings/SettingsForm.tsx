@@ -44,6 +44,7 @@ export default function SettingsForm({ initialSemesterEndDate }: Props) {
       <input
         id="semester_end_date"
         type="date"
+        aria-label="Semester end date"
         value={semesterEnd}
         onChange={(e) => setSemesterEnd(e.target.value)}
         disabled={saving}

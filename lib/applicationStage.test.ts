@@ -5,6 +5,7 @@ import {
   toDisplayStage,
   resolveStageForLane,
   isTerminalStage,
+  shouldScheduleOnCreate,
   INTERVIEW_STAGES,
   TERMINAL_STAGES,
   type DisplayStage,
@@ -107,6 +108,35 @@ for (const stage of APPLICATION_STAGES) {
   assert(
     `terminal(${stage}) matches its lane being offer/rejected`,
     isTerminalStage(stage) === laneIsTerminal
+  );
+}
+
+// --- shouldScheduleOnCreate: reminder symmetry on the create path ---
+// Schedules only when a next action is set AND the stage is non-terminal.
+const NOW = '2026-07-14T12:00:00.000Z';
+
+// No next action → never schedules, regardless of stage.
+assert('no nextActionAt, applied → no schedule', !shouldScheduleOnCreate('applied', null));
+assert('no nextActionAt, undefined → no schedule', !shouldScheduleOnCreate('applied', undefined));
+assert('no nextActionAt, empty string → no schedule', !shouldScheduleOnCreate('applied', ''));
+assert('no nextActionAt, offer → no schedule', !shouldScheduleOnCreate('offer', null));
+
+// Next action set + non-terminal stage → schedules.
+assert('nextActionAt + applied → schedule', shouldScheduleOnCreate('applied', NOW));
+for (const sub of INTERVIEW_STAGES) {
+  assert(`nextActionAt + ${sub} → schedule`, shouldScheduleOnCreate(sub, NOW));
+}
+
+// Next action set + terminal stage → suppressed (matches update/move paths).
+for (const term of TERMINAL_STAGES) {
+  assert(`nextActionAt + ${term} → no schedule`, !shouldScheduleOnCreate(term, NOW));
+}
+
+// Invariant: shouldScheduleOnCreate(stage, when) ⇔ (when set) && !terminal(stage).
+for (const stage of APPLICATION_STAGES) {
+  assert(
+    `shouldScheduleOnCreate agrees with isTerminalStage for ${stage}`,
+    shouldScheduleOnCreate(stage, NOW) === !isTerminalStage(stage)
   );
 }
 

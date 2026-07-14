@@ -214,8 +214,11 @@ export default function QuickAdd({
 
   return (
     <section className="rounded-lg border border-ink-faint/40 p-4">
-      <label className="font-display text-xl text-ink-soft">quick add</label>
+      <label htmlFor="quick-add-input" className="font-display text-xl text-ink-soft">
+        quick add
+      </label>
       <textarea
+        id="quick-add-input"
         ref={textareaRef}
         rows={2}
         placeholder='e.g. "STA 240 HW5 due Friday 11:59pm" or "COMPSCI 372 hw every Tuesday 11:59pm"'

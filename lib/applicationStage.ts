@@ -29,6 +29,18 @@ export function isTerminalStage(stage: string): boolean {
   return (TERMINAL_STAGES as readonly string[]).includes(stage);
 }
 
+// Should createApplication schedule next-action reminders for a freshly-created
+// row? Only when a next action is set AND the created stage is non-terminal —
+// mirroring the update/move paths, which never keep reminders on a terminal
+// stage. Extracting the condition keeps it a pure, testable seam (the server
+// action itself can't be unit-tested without a DB).
+export function shouldScheduleOnCreate(
+  stage: string,
+  nextActionAt: string | null | undefined
+): boolean {
+  return Boolean(nextActionAt) && !isTerminalStage(stage);
+}
+
 // Forward map: which display lane does a schema stage belong to?
 export function toDisplayStage(stage: ApplicationStage): DisplayStage {
   if (stage === 'applied') return 'applied';

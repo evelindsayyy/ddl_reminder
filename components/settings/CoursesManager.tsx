@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { COURSE_COLOR_PALETTE } from '@/lib/colors';
 import { CourseChip } from '@/components/ui/CourseChip';
@@ -112,6 +112,7 @@ export default function CoursesManager({ courses }: Props) {
         <input
           type="text"
           placeholder="Code (e.g. STA 240)"
+          aria-label="Course code"
           value={code}
           onChange={(e) => setCode(e.target.value)}
           disabled={busy}
@@ -120,6 +121,7 @@ export default function CoursesManager({ courses }: Props) {
         <input
           type="text"
           placeholder="Full name (optional)"
+          aria-label="Course name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           disabled={busy}
@@ -206,18 +208,56 @@ function ColorPicker({
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  // Dismiss the popover on Escape or an outside click. Escape returns focus to
+  // the trigger (WAI-ARIA disclosure pattern); an outside click leaves focus
+  // wherever the pointer landed. Listeners are only attached while open.
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    }
+    function onPointerDown(e: MouseEvent) {
+      const target = e.target as Node;
+      if (
+        !popoverRef.current?.contains(target) &&
+        !triggerRef.current?.contains(target)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('mousedown', onPointerDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('mousedown', onPointerDown);
+    };
+  }, [open]);
+
+  // ≥44px hit target via a transparent pseudo-element; the drawn 24px swatch is
+  // preserved (WCAG 2.5.5 — expand the click area, not the visual).
+  const hitClass = "relative before:absolute before:-inset-[10px] before:content-['']";
   return (
     <div className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         disabled={disabled}
         aria-label="Change color"
-        className="h-6 w-6 rounded-full border border-ink-faint disabled:opacity-60"
+        aria-haspopup="true"
+        aria-expanded={open}
+        className={`h-6 w-6 rounded-full border border-ink-faint disabled:opacity-60 ${hitClass}`}
         style={{ backgroundColor: value }}
       />
       {open ? (
         <div
+          ref={popoverRef}
           className="absolute left-0 top-8 z-10 flex flex-wrap gap-1 rounded-md border border-ink-faint bg-bg p-2 shadow-sm"
           style={{ width: '10rem' }}
         >
@@ -234,7 +274,7 @@ function ColorPicker({
                 color.toLowerCase() === value.toLowerCase()
                   ? 'border-ink'
                   : 'border-ink-faint'
-              }`}
+              } ${hitClass}`}
               style={{ backgroundColor: color }}
             />
           ))}
@@ -261,11 +301,13 @@ function EditForm({
         type="text"
         value={code}
         onChange={(e) => setCode(e.target.value)}
+        aria-label="Course code"
         className="min-w-[8rem] rounded border border-ink-faint px-2 py-1 text-sm"
       />
       <input
         type="text"
         placeholder="Full name"
+        aria-label="Course name"
         value={name}
         onChange={(e) => setName(e.target.value)}
         className="flex-1 min-w-[8rem] rounded border border-ink-faint px-2 py-1 text-sm"

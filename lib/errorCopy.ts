@@ -25,6 +25,15 @@ const EXACT_MATCH: Record<string, string> = {
 };
 
 const GENERIC_FAILURE = 'Something went wrong — try again.';
+const NETWORK_FAILURE =
+  "Can't reach the server — check your connection and try again.";
+
+// Browser fetch network failures surface as a thrown TypeError whose message is
+// `Failed to fetch` (Chrome/Firefox), `Load failed` (Safari), or a
+// `NetworkError ...` string. Call sites pass `err.message`, so this raw text
+// reaches humanizeError — match case-insensitively as a substring so the
+// wrapped Safari/Firefox variants are caught too.
+const NETWORK_ERROR = /(failed to fetch|load failed|networkerror)/i;
 
 // `PATCH 500`, `DELETE 404`, ... — the uppercase-HTTP-verb `verb ${status}` shape.
 const HTTP_VERB_STATUS = /^(PATCH|DELETE|POST|GET) \d+$/;
@@ -47,6 +56,10 @@ export function humanizeError(code: string | null | undefined): string {
 
   const mapped = EXACT_MATCH[code];
   if (mapped) return mapped;
+
+  // Connection failures map to the offline copy before the status-shape checks
+  // and the generic fallback.
+  if (NETWORK_ERROR.test(code)) return NETWORK_FAILURE;
 
   if (HTTP_VERB_STATUS.test(code) || TRAILING_STATUS.test(code)) {
     return `The server said no (${code}) — try again in a moment.`;

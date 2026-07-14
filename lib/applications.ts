@@ -15,6 +15,7 @@ import {
 import {
   isTerminalStage,
   resolveStageForLane,
+  shouldScheduleOnCreate,
   type DisplayStage,
 } from '@/lib/applicationStage';
 import { ensureUserPrefs } from '@/lib/prefs';
@@ -60,12 +61,16 @@ export async function createApplication(input: CreateApplicationInput): Promise<
   if (error) return { ok: false, error: error.message };
 
   // Schedule next-action reminders (same infra as assignments, CLAUDE.md §6).
-  if (parsed.data.nextActionAt) {
+  // Skip when the created stage is already terminal, so a row created directly
+  // in offer/rejected/withdrawn never arms reminders the update/move paths
+  // would have suppressed (reminder symmetry).
+  if (shouldScheduleOnCreate(parsed.data.stage ?? 'applied', parsed.data.nextActionAt)) {
     const prefs = await ensureUserPrefs(supabase, { id: user.id, email: user.email });
     void scheduleApplicationReminders({
       userId: user.id,
       applicationId: data.id,
-      nextActionAtIso: parsed.data.nextActionAt,
+      // shouldScheduleOnCreate guarantees a truthy next-action timestamp here.
+      nextActionAtIso: parsed.data.nextActionAt!,
       reminderOffsetsHours: prefs.reminder_offsets_hours,
       appUrl: appUrl(),
     });

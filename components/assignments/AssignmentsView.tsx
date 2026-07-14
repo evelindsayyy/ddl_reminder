@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useOptimistic, useState, useTransition } from 'react';
+import { useMemo, useOptimistic, useRef, useState, useTransition, type KeyboardEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import type {
@@ -160,6 +160,7 @@ export function AssignmentsView({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SegmentedControl
           aria-label="View mode"
+          controls="assignments-view-panel"
           options={[
             { value: 'list', label: 'list' },
             { value: 'calendar', label: 'calendar' },
@@ -196,28 +197,35 @@ export function AssignmentsView({
         </div>
       ) : null}
 
-      {view === 'list' ? (
-        renderList
-      ) : view === 'calendar' ? (
-        <CalendarMonthView
-          assignments={optimistic}
-          timezone={timezone}
-          onToggleDone={onToggleDone}
-          onEdit={onEdit}
-          onDelete={onDelete}
-        />
-      ) : (
-        // Timeline view: desktop-only. On <md, fall back to the list.
-        <>
-          <div className="hidden md:block">{renderTimeline}</div>
-          <div className="md:hidden">
-            {renderList}
-            <p className="mt-3 font-display text-base text-ink-faint">
-              ~ timeline view is desktop-only — showing list instead
-            </p>
-          </div>
-        </>
-      )}
+      <div
+        id="assignments-view-panel"
+        role="tabpanel"
+        aria-labelledby={`assignments-view-panel-${view}`}
+        tabIndex={0}
+      >
+        {view === 'list' ? (
+          renderList
+        ) : view === 'calendar' ? (
+          <CalendarMonthView
+            assignments={optimistic}
+            timezone={timezone}
+            onToggleDone={onToggleDone}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ) : (
+          // Timeline view: desktop-only. On <md, fall back to the list.
+          <>
+            <div className="hidden md:block">{renderTimeline}</div>
+            <div className="md:hidden">
+              {renderList}
+              <p className="mt-3 font-display text-base text-ink-faint">
+                ~ timeline view is desktop-only — showing list instead
+              </p>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -252,6 +260,9 @@ interface SegmentedControlProps<T extends string> {
   onChange: (v: T) => void;
   'aria-label'?: string;
   className?: string;
+  // Panel id the tabs control (WAI-ARIA); when set, tabs also get stable ids
+  // (`${controls}-${value}`) so the panel can point back with aria-labelledby.
+  controls?: string;
 }
 
 function SegmentedControl<T extends string>({
@@ -259,8 +270,27 @@ function SegmentedControl<T extends string>({
   value,
   onChange,
   className,
+  controls,
   ...rest
 }: SegmentedControlProps<T>) {
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // Roving-tabindex arrow-key navigation (WAI-ARIA tabs pattern): Left/Right
+  // wrap, Home/End jump to ends; the newly focused tab is also activated.
+  function onKeyDown(e: KeyboardEvent<HTMLButtonElement>) {
+    const idx = options.findIndex((o) => o.value === value);
+    let next = idx;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (idx + 1) % options.length;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp')
+      next = (idx - 1 + options.length) % options.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = options.length - 1;
+    else return;
+    e.preventDefault();
+    onChange(options[next].value);
+    tabRefs.current[next]?.focus();
+  }
+
   return (
     <div
       role="tablist"
@@ -270,13 +300,20 @@ function SegmentedControl<T extends string>({
         className
       )}
     >
-      {options.map((opt) => (
+      {options.map((opt, i) => (
         <button
           key={opt.value}
+          ref={(el) => {
+            tabRefs.current[i] = el;
+          }}
+          id={controls ? `${controls}-${opt.value}` : undefined}
           role="tab"
           aria-selected={value === opt.value}
+          aria-controls={controls}
+          tabIndex={value === opt.value ? 0 : -1}
           type="button"
           onClick={() => onChange(opt.value)}
+          onKeyDown={onKeyDown}
           className={cn(
             'rounded-sm px-3 py-1 text-xs transition-colors duration-150',
             value === opt.value ? 'bg-ink text-bg' : 'text-ink-soft hover:bg-bg-dim'

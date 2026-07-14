@@ -62,6 +62,24 @@ for (const code of TRAILING_STATUS_CASES) {
 eq('humanizeError("PATCH 500") is wrapped, not bare', humanizeError('PATCH 500'), 'The server said no (PATCH 500) — try again in a moment.');
 assert('humanizeError("PATCH 500") !== "PATCH 500"', humanizeError('PATCH 500') !== 'PATCH 500');
 
+// --- browser network failures -> the offline / can't-reach-server copy ---
+// Thrown TypeError messages reach humanizeError as `err.message`; match
+// case-insensitively as a substring across Chrome/Firefox/Safari variants.
+const NETWORK = "Can't reach the server — check your connection and try again.";
+const NETWORK_CASES = [
+  'Failed to fetch', // Chrome/Firefox
+  'TypeError: Failed to fetch', // wrapped
+  'failed to fetch', // lowercase
+  'Load failed', // Safari
+  'load failed',
+  'NetworkError', // Firefox short form
+  'NetworkError when attempting to fetch resource.', // Firefox long form
+  'networkerror',
+];
+for (const code of NETWORK_CASES) {
+  eq(`humanizeError(${JSON.stringify(code)})`, humanizeError(code), NETWORK);
+}
+
 // --- null / undefined / empty string -> generic sentence ---
 const GENERIC = 'Something went wrong — try again.';
 eq('humanizeError(null)', humanizeError(null), GENERIC);
