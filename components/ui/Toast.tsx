@@ -20,6 +20,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -37,7 +38,7 @@ interface ToastRecord {
   tone: ToastTone;
 }
 
-interface ToastContextValue {
+export interface ToastContextValue {
   toast: (message: string, opts?: ToastOptions) => void;
 }
 
@@ -49,6 +50,11 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastRecord[]>([]);
   const idRef = useRef(0);
+  // Ref mirror of `toasts`, kept in lockstep with every state write below. It
+  // lets `toast()` compute the next list (dedupe + eviction) OUTSIDE the
+  // `setToasts` updater — so no side effect (clearTimeout) ever runs inside a
+  // reducer that React double-invokes under StrictMode.
+  const toastsRef = useRef<ToastRecord[]>([]);
   // id -> pending auto-dismiss timeout, so we can cancel on manual dismiss,
   // on overflow eviction, and on unmount.
   const timeouts = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
@@ -61,34 +67,63 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Single funnel for removals (manual dismiss + auto-dismiss + eviction): keep
+  // the ref mirror and React state consistent by driving both from the ref.
+  const removeToast = useCallback((id: number) => {
+    toastsRef.current = toastsRef.current.filter((t) => t.id !== id);
+    setToasts(toastsRef.current);
+  }, []);
+
+  const scheduleDismiss = useCallback(
+    (id: number) => {
+      const handle = setTimeout(() => {
+        timeouts.current.delete(id);
+        removeToast(id);
+      }, AUTO_DISMISS_MS);
+      timeouts.current.set(id, handle);
+    },
+    [removeToast]
+  );
+
   const dismiss = useCallback(
     (id: number) => {
       clearTimeoutFor(id);
-      setToasts((prev) => prev.filter((t) => t.id !== id));
+      removeToast(id);
     },
-    [clearTimeoutFor]
+    [clearTimeoutFor, removeToast]
   );
 
   const toast = useCallback(
     (message: string, opts?: ToastOptions) => {
+      const tone: ToastTone = opts?.tone ?? 'error';
+
+      // Dedupe: an identical (message + tone) toast already on screen doesn't
+      // stack a second node — it just resets its own 5s auto-dismiss timer.
+      const existing = toastsRef.current.find(
+        (t) => t.message === message && t.tone === tone
+      );
+      if (existing) {
+        clearTimeoutFor(existing.id);
+        scheduleDismiss(existing.id);
+        return;
+      }
+
       const id = idRef.current++;
-      const record: ToastRecord = { id, message, tone: opts?.tone ?? 'error' };
-      setToasts((prev) => {
-        const next = [...prev, record];
-        // Keep only the newest MAX_TOASTS; evict + un-schedule any overflow.
-        while (next.length > MAX_TOASTS) {
-          const evicted = next.shift();
-          if (evicted) clearTimeoutFor(evicted.id);
-        }
-        return next;
-      });
-      const handle = setTimeout(() => {
-        timeouts.current.delete(id);
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, AUTO_DISMISS_MS);
-      timeouts.current.set(id, handle);
+      const record: ToastRecord = { id, message, tone };
+      // Compute the next list (append + evict overflow) OUTSIDE the updater.
+      const next = [...toastsRef.current, record];
+      const evicted: ToastRecord[] = [];
+      while (next.length > MAX_TOASTS) {
+        const gone = next.shift();
+        if (gone) evicted.push(gone);
+      }
+      // Un-schedule evicted toasts here (side effect lives outside setToasts).
+      for (const gone of evicted) clearTimeoutFor(gone.id);
+      toastsRef.current = next;
+      setToasts(next);
+      scheduleDismiss(id);
     },
-    [clearTimeoutFor]
+    [clearTimeoutFor, scheduleDismiss]
   );
 
   // Clear every outstanding timeout when the provider unmounts.
@@ -100,8 +135,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Memoize the context value so consumers don't re-render on every provider
+  // render (the value object was previously reconstructed each time).
+  const value = useMemo<ToastContextValue>(() => ({ toast }), [toast]);
+
   return (
-    <ToastContext.Provider value={{ toast }}>
+    <ToastContext.Provider value={value}>
       {children}
       <div
         role="status"
