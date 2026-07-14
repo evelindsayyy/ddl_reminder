@@ -122,7 +122,9 @@ export function AssignmentCard({
         onClick={handleToggle}
         disabled={pending}
         className={cn(
-          'mt-0.5 inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-sm border transition-colors duration-150 disabled:cursor-not-allowed',
+          // ≥44px hit target via a transparent pseudo-element; the drawn 18px box
+          // is preserved (WCAG 2.5.5 — expand the click area, not the visual).
+          "relative mt-0.5 inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-sm border transition-colors duration-150 before:absolute before:-inset-[13px] before:content-[''] disabled:cursor-not-allowed",
           isDone
             ? 'border-success bg-success text-bg'
             : 'border-ink-faint hover:border-ink'
@@ -344,12 +346,14 @@ function EditForm({
         type="text"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
+        aria-label="Title"
         className="flex-1 min-w-[10rem] rounded border border-ink-faint px-2 py-1 text-sm focus:border-ink focus:outline-none"
       />
       <input
         type="datetime-local"
         value={localDt}
         onChange={(e) => setLocalDt(e.target.value)}
+        aria-label="Due date"
         className="rounded border border-ink-faint px-2 py-1 text-sm font-mono focus:border-ink focus:outline-none"
       />
       <input

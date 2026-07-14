@@ -86,6 +86,7 @@ export function AddApplicationForm() {
         type="text"
         autoFocus
         placeholder="Company"
+        aria-label="Company"
         value={company}
         onChange={(e) => setCompany(e.target.value)}
         disabled={pending}
@@ -94,6 +95,7 @@ export function AddApplicationForm() {
       <input
         type="text"
         placeholder="Role"
+        aria-label="Role"
         value={role}
         onChange={(e) => setRole(e.target.value)}
         disabled={pending}
@@ -115,6 +117,7 @@ export function AddApplicationForm() {
       <input
         type="text"
         placeholder="Next action (e.g. follow up)"
+        aria-label="Next action"
         value={nextAction}
         onChange={(e) => setNextAction(e.target.value)}
         disabled={pending}
@@ -132,6 +135,7 @@ export function AddApplicationForm() {
       <input
         type="text"
         placeholder="Notes (interviewer, prep links…)"
+        aria-label="Notes"
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         disabled={pending}

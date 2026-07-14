@@ -370,12 +370,14 @@ function EditPanel({
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          aria-label="Title"
           className="min-w-[12rem] flex-1 rounded border border-ink-faint px-2 py-1 text-base focus:border-ink focus:outline-none"
         />
         <input
           type="datetime-local"
           value={localDt}
           onChange={(e) => setLocalDt(e.target.value)}
+          aria-label="Due date"
           className="rounded border border-ink-faint px-2 py-1 font-mono text-sm focus:border-ink focus:outline-none"
         />
         <button

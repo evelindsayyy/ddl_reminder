@@ -80,6 +80,7 @@ export default function RemindersForm({ initialOffsets }: Props) {
           min={1}
           max={720}
           placeholder="hours"
+          aria-label="Reminder offset in hours"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           className="w-20 rounded border border-ink-faint px-2 py-1 font-mono text-xs focus:border-ink focus:outline-none"
