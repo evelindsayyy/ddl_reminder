@@ -6,6 +6,8 @@ import { updateApplication, deleteApplication } from '@/lib/applications';
 import { buildStageChangePatch } from '@/lib/applicationPatch';
 import { STAGE_LABELS } from '@/lib/applicationStage';
 import { APPLICATION_STAGES } from '@/lib/schemas';
+import { useToast } from '@/components/ui/Toast';
+import { humanizeError } from '@/lib/errorCopy';
 import type { ApplicationCardData, ApplicationStage } from './ApplicationCard';
 
 export interface ApplicationActionsProps {
@@ -19,8 +21,8 @@ export interface ApplicationActionsProps {
 // → ActionResult.ok branch → error banner → router.refresh() (refresh-to-truth).
 export function ApplicationActions({ application: a, onEdit, onStageOptimistic }: ApplicationActionsProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
   // Timeline path has no onStageOptimistic, so the select would snap back to the
   // old stage for the whole pending window. Hold the chosen stage locally until
   // the refresh makes the prop truth. Harmless alongside the kanban's own optimism.
@@ -28,12 +30,11 @@ export function ApplicationActions({ application: a, onEdit, onStageOptimistic }
 
   function onStageChange(next: ApplicationStage) {
     if (next === a.stage) return;
-    setError(null);
     setPendingStage(next);
     onStageOptimistic?.(next);
     startTransition(async () => {
       const res = await updateApplication(a.id, buildStageChangePatch(a, next));
-      if (!res.ok) setError(res.error ?? 'move_failed');
+      if (!res.ok) toast(humanizeError(res.error ?? 'move_failed'));
       router.refresh();
       setPendingStage(null);
     });
@@ -41,10 +42,9 @@ export function ApplicationActions({ application: a, onEdit, onStageOptimistic }
 
   function onDelete() {
     if (!confirm(`Delete "${a.company} — ${a.role}"?`)) return;
-    setError(null);
     startTransition(async () => {
       const res = await deleteApplication(a.id);
-      if (!res.ok) setError(res.error ?? 'delete_failed');
+      if (!res.ok) toast(humanizeError(res.error ?? 'delete_failed'));
       router.refresh();
     });
   }
@@ -88,7 +88,6 @@ export function ApplicationActions({ application: a, onEdit, onStageOptimistic }
           <TrashIcon />
         </button>
       </div>
-      {error ? <p className="mt-1 text-xs text-urgent">{error}</p> : null}
     </div>
   );
 }

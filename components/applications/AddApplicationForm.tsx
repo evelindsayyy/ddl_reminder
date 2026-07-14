@@ -5,9 +5,12 @@ import { useRouter } from 'next/navigation';
 import { createApplication } from '@/lib/applications';
 import { APPLICATION_STAGES } from '@/lib/schemas';
 import { STAGE_LABELS } from '@/lib/applicationStage';
+import { useToast } from '@/components/ui/Toast';
+import { humanizeError } from '@/lib/errorCopy';
 
 export function AddApplicationForm() {
   const router = useRouter();
+  const { toast } = useToast();
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
   const [company, setCompany] = useState('');
@@ -47,7 +50,7 @@ export function AddApplicationForm() {
         notes: notes.trim() || null,
       });
       if (!res.ok) {
-        setError(res.error ?? 'create_failed');
+        toast(humanizeError(res.error ?? 'create_failed'));
         return;
       }
       reset();

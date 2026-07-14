@@ -4,6 +4,8 @@ import { useState, useTransition, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateApplication } from '@/lib/applications';
 import { isoToDatetimeLocal, datetimeLocalToIso } from '@/lib/datetimeLocal';
+import { useToast } from '@/components/ui/Toast';
+import { humanizeError } from '@/lib/errorCopy';
 import type { ApplicationCardData } from './ApplicationCard';
 
 export interface ApplicationEditFormProps {
@@ -19,6 +21,7 @@ export interface ApplicationEditFormProps {
 // <label> — this is new UI, so it meets the a11y bar from day one.
 export function ApplicationEditForm({ application: a, onCancel, onSaved }: ApplicationEditFormProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [pending, startTransition] = useTransition();
   const [company, setCompany] = useState(a.company);
   const [role, setRole] = useState(a.role);
@@ -45,7 +48,7 @@ export function ApplicationEditForm({ application: a, onCancel, onSaved }: Appli
         notes: notes.trim() === '' ? null : notes.trim(),
       });
       if (!res.ok) {
-        setError(res.error ?? 'save_failed');
+        toast(humanizeError(res.error ?? 'save_failed'));
         return;
       }
       onSaved();

@@ -11,6 +11,8 @@ import {
 } from './ApplicationCard';
 import { ApplicationCardInteractive } from './ApplicationCardInteractive';
 import { moveApplicationToLane } from '@/lib/applications';
+import { useToast } from '@/components/ui/Toast';
+import { humanizeError } from '@/lib/errorCopy';
 
 const LANES: { key: DisplayStage; label: string }[] = [
   { key: 'applied', label: 'applied' },
@@ -32,6 +34,7 @@ export interface PipelineKanbanProps {
 
 export function PipelineKanban({ applications, timezone }: PipelineKanbanProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [, startTransition] = useTransition();
   const [optimistic, applyOptimistic] = useOptimistic<ApplicationCardData[], OptimisticAction>(
     applications,
@@ -43,7 +46,6 @@ export function PipelineKanban({ applications, timezone }: PipelineKanbanProps) 
       })
   );
   const [hoverLane, setHoverLane] = useState<DisplayStage | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const grouped: Record<DisplayStage, ApplicationCardData[]> = {
     applied: [],
@@ -68,22 +70,16 @@ export function PipelineKanban({ applications, timezone }: PipelineKanbanProps) 
     const current = optimistic.find((a) => a.id === id);
     if (!current) return;
     if (toDisplayStage(current.stage) === lane) return;
-    setError(null);
     startTransition(() => applyOptimistic({ id, lane }));
     void (async () => {
       const res = await moveApplicationToLane(id, lane);
-      if (!res.ok) setError(res.error ?? 'move_failed');
+      if (!res.ok) toast(humanizeError(res.error ?? 'move_failed'));
       router.refresh();
     })();
   }
 
   return (
     <div className="space-y-2">
-      {error ? (
-        <p className="rounded border border-urgent/40 bg-urgent/5 p-2 text-xs text-urgent">
-          {error}
-        </p>
-      ) : null}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         {LANES.map((lane) => {
           const items = grouped[lane.key];

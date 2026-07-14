@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import SignOutButton from './SignOutButton';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { MobileAddBar } from '@/components/layout/MobileAddBar';
+import { ToastProvider } from '@/components/ui/Toast';
 
 const NAV = [
   { href: '/', label: 'dashboard' },
@@ -20,8 +21,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!user) redirect('/login');
 
   return (
-    <div className="min-h-screen bg-bg text-ink">
-      {/* Desktop top nav */}
+    <ToastProvider>
+      <div className="min-h-screen bg-bg text-ink">
+        {/* Desktop top nav */}
       <header className="hidden border-b border-ink-faint/40 md:block">
         <nav className="mx-auto flex max-w-5xl items-center gap-x-6 gap-y-2 px-4 py-3">
           <span className="font-display text-2xl font-semibold leading-none">deadlines.</span>
@@ -51,6 +53,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       <MobileAddBar />
       <MobileBottomNav />
-    </div>
+      </div>
+    </ToastProvider>
   );
 }
