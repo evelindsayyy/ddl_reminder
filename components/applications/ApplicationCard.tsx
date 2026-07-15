@@ -85,6 +85,12 @@ export function ApplicationCard({
         </div>
       ) : null}
 
+      {a.notes ? (
+        <div className="mt-2 border-t border-dashed border-ink-faint/50 pt-2">
+          <p className="line-clamp-2 text-sm text-ink-soft">{a.notes}</p>
+        </div>
+      ) : null}
+
       {footer ? (
         <div className="mt-2 border-t border-dashed border-ink-faint/50 pt-2">{footer}</div>
       ) : null}
