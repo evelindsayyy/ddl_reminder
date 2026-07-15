@@ -27,6 +27,7 @@ function makeAdmin(cfg: {
 }) {
   const inserts: Array<{ table: string; payload: Record<string, unknown> }> = [];
   const updates: Array<{ table: string; payload: Record<string, unknown> }> = [];
+  const upserts: Array<{ table: string; payload: Record<string, unknown> }> = [];
   const from = (table: string) => {
     const awaited = cfg.awaited?.[table] ?? { data: [], error: null };
     const single = cfg.maybeSingle?.[table] ?? { data: null, error: null };
@@ -41,6 +42,10 @@ function makeAdmin(cfg: {
         updates.push({ table, payload });
         return b;
       },
+      upsert: (payload: Record<string, unknown>) => {
+        upserts.push({ table, payload });
+        return b;
+      },
       single: () => Promise.resolve(single),
       maybeSingle: () => Promise.resolve(single),
       then: (res: (v: Result) => unknown, rej?: (e: unknown) => unknown) =>
@@ -48,7 +53,7 @@ function makeAdmin(cfg: {
     };
     return b;
   };
-  return { from, inserts, updates };
+  return { from, inserts, updates, upserts };
 }
 
 const TOKEN = 'a'.repeat(40); // ≥32 chars → passes the schema length check.
@@ -129,5 +134,81 @@ describe('app/api/sync/gradescope', () => {
       external_id: 'gs-101',
       source: 'gradescope',
     });
+
+    // This sync was counted against the user's rate-limit window.
+    const rlUpsert = admin.upserts.find((u) => u.table === 'sync_rate_limits');
+    expect(rlUpsert?.payload).toMatchObject({ user_id: 'user-1', count: 1 });
+  });
+
+  it('under the rate limit → proceeds (200) and increments the count', async () => {
+    const admin = makeAdmin({
+      maybeSingle: {
+        user_prefs: { data: { user_id: 'user-1' }, error: null },
+        courses: { data: { id: 'course-1' }, error: null },
+        // 3 syncs already this window (< 10) → allowed.
+        sync_rate_limits: {
+          data: { window_start: new Date().toISOString(), count: 3 },
+          error: null,
+        },
+      },
+      awaited: { assignments: { data: [], error: null } },
+    });
+    supa.current = admin;
+
+    const res = await POST(
+      makeRequest({
+        token: TOKEN,
+        courseName: 'STA 240',
+        assignments: [
+          { externalId: 'gs-1', title: 'PS1', dueAt: '2026-05-01T23:59:00.000Z' },
+        ],
+      })
+    );
+
+    expect(res.status).toBe(200);
+    // Carries the window forward: count 3 → 4.
+    const rlUpsert = admin.upserts.find((u) => u.table === 'sync_rate_limits');
+    expect(rlUpsert?.payload).toMatchObject({ user_id: 'user-1', count: 4 });
+  });
+
+  it('over the rate limit → 429 with Retry-After + CORS, no sync performed', async () => {
+    const admin = makeAdmin({
+      maybeSingle: {
+        user_prefs: { data: { user_id: 'user-1' }, error: null },
+        // Window is full: 10 syncs already used.
+        sync_rate_limits: {
+          data: { window_start: new Date().toISOString(), count: 10 },
+          error: null,
+        },
+      },
+    });
+    supa.current = admin;
+
+    const res = await POST(
+      makeRequest({
+        token: TOKEN,
+        courseName: 'STA 240',
+        assignments: [
+          { externalId: 'gs-1', title: 'PS1', dueAt: '2026-05-01T23:59:00.000Z' },
+        ],
+      })
+    );
+
+    expect(res.status).toBe(429);
+    expect(await res.json()).toEqual({ error: 'rate_limited' });
+
+    // Retry-After present, a positive integer, and ≤ the 1h window (3600s).
+    const retryAfter = Number(res.headers.get('retry-after'));
+    expect(Number.isInteger(retryAfter)).toBe(true);
+    expect(retryAfter).toBeGreaterThan(0);
+    expect(retryAfter).toBeLessThanOrEqual(3600);
+
+    // CORS must survive on the error response or the browser hides the 429.
+    expect(res.headers.get('access-control-allow-origin')).toBe('https://www.gradescope.com');
+    expect(res.headers.get('vary')).toBe('Origin');
+
+    // Nothing was written when over the limit.
+    expect(admin.inserts.length).toBe(0);
+    expect(admin.upserts.length).toBe(0);
   });
 });

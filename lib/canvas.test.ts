@@ -7,7 +7,8 @@
 // syncCanvasForUser is not unit-tested here (needs Supabase) — its parsing
 // inputs are what these tests pin down.
 
-import { parseCanvasIcs, splitCanvasSummary } from './canvas';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { parseCanvasIcs, splitCanvasSummary, syncCanvasForUser } from './canvas';
 
 let passed = 0;
 let failed = 0;
@@ -187,5 +188,108 @@ eq('split: bracket beats category', scs('[BIO 101] Lab', ['CHEM 200']).courseCod
 eq('split: skips non-matching category, uses the matching one',
   scs('Event', ['STA 240 Probability', 'MATH 122']).courseCode, 'MATH 122');
 
-console.log(`\ncanvas.test.ts — ${passed} passed, ${failed} failed`);
-if (failed > 0) process.exit(1);
+// ================= syncCanvasForUser: type preservation on re-sync =================
+//
+// Regression guard: the UPDATE path must NOT write `type`. Canvas can't tell us
+// an assignment's type, so it's derived ('other') only on INSERT; a user who
+// later edits the type in the app must keep it across every re-sync. We drive
+// the real syncCanvasForUser with a stubbed fetch (returns one VEVENT whose UID
+// matches an existing row) and a captured-write Supabase fake, then assert the
+// update payload omits `type` while carrying Canvas-owned fields.
+
+// A single-event feed whose UID collides with an existing row → the UPDATE path.
+const RESYNC_ICS = [
+  'BEGIN:VCALENDAR',
+  'BEGIN:VEVENT',
+  'UID:uid-existing',
+  'SUMMARY:Rename this later', // no [CODE] → no course insert path
+  'DTSTART:20260501T120000Z',
+  'END:VEVENT',
+  'END:VCALENDAR',
+].join('\n');
+
+type FakeResult = { data: unknown; error: unknown };
+function makeServiceClient(awaited: Record<string, FakeResult>) {
+  const updates: Array<{ table: string; payload: Record<string, unknown> }> = [];
+  const from = (table: string) => {
+    const res = awaited[table] ?? { data: [], error: null };
+    const b = {
+      select: () => b,
+      eq: () => b,
+      insert: () => b,
+      update: (payload: Record<string, unknown>) => {
+        updates.push({ table, payload });
+        return b;
+      },
+      single: () => Promise.resolve(res),
+      maybeSingle: () => Promise.resolve(res),
+      then: (onOk: (v: FakeResult) => unknown, onErr?: (e: unknown) => unknown) =>
+        Promise.resolve(res).then(onOk, onErr),
+    };
+    return b;
+  };
+  return { client: { from } as unknown as SupabaseClient, updates };
+}
+
+// tsx compiles to CJS (no top-level await), so the async re-sync check and the
+// final summary run inside one async IIFE after the synchronous tests above.
+async function resyncTypePreservation(): Promise<void> {
+  const savedFetch = globalThis.fetch;
+  globalThis.fetch = (async () => ({
+    ok: true,
+    status: 200,
+    text: async () => RESYNC_ICS,
+  })) as unknown as typeof fetch;
+
+  try {
+    const { client, updates } = makeServiceClient({
+      assignments: {
+        data: [
+          {
+            id: 'row-1',
+            external_id: 'uid-existing',
+            completed_at: null,
+            notes: null,
+            estimated_hours: null,
+            actual_hours: null,
+          },
+        ],
+        error: null,
+      },
+      courses: { data: [], error: null },
+      user_prefs: { data: [], error: null },
+    });
+
+    const summary = await syncCanvasForUser(
+      client,
+      'user-1',
+      'https://canvas.example.com/feed.ics'
+    );
+
+    eq('resync: one row updated', summary.updated, 1);
+    eq('resync: nothing inserted', summary.inserted, 0);
+
+    const assignmentUpdate = updates.find((u) => u.table === 'assignments');
+    check('resync: an assignments UPDATE was issued', assignmentUpdate != null);
+    check(
+      'resync: UPDATE preserves user-edited type (no `type` in payload)',
+      assignmentUpdate != null && !('type' in assignmentUpdate.payload)
+    );
+    // Canvas-owned fields are still written.
+    check(
+      'resync: UPDATE still writes Canvas-owned title',
+      assignmentUpdate?.payload.title === 'Rename this later'
+    );
+    check(
+      'resync: UPDATE still writes due_at',
+      assignmentUpdate?.payload.due_at === '2026-05-01T12:00:00.000Z'
+    );
+  } finally {
+    globalThis.fetch = savedFetch;
+  }
+}
+
+void resyncTypePreservation().then(() => {
+  console.log(`\ncanvas.test.ts — ${passed} passed, ${failed} failed`);
+  if (failed > 0) process.exit(1);
+});

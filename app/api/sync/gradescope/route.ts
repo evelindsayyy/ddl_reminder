@@ -7,6 +7,11 @@ import { pickColorForNewCourse } from '@/lib/colors';
 // bookmarklet POSTs from gradescope.com → CORS allow that origin.
 const ALLOWED_ORIGIN = 'https://www.gradescope.com';
 
+// DB-backed fixed-window rate limit (no Redis available): at most
+// RATE_LIMIT_MAX syncs per user per RATE_LIMIT_WINDOW_MS.
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
 function corsHeaders(): HeadersInit {
   return {
     'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
@@ -45,6 +50,43 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
   if (prefs.error || !prefs.data) return jsonCors({ error: 'unauthorized' }, 401);
   const userId = prefs.data.user_id;
+
+  // Fixed-window rate limit, per user, backed by `sync_rate_limits`.
+  const now = Date.now();
+  const rl = await admin
+    .from('sync_rate_limits')
+    .select('window_start, count')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  let windowStartMs = now;
+  let count = 0;
+  if (rl.data) {
+    const existingStart = new Date(rl.data.window_start).getTime();
+    if (now - existingStart < RATE_LIMIT_WINDOW_MS) {
+      // Still inside the current window — carry its start + count forward.
+      windowStartMs = existingStart;
+      count = rl.data.count;
+    }
+    // else: window elapsed → reset to a fresh window (windowStartMs=now, count=0).
+  }
+
+  if (count >= RATE_LIMIT_MAX) {
+    const retryAfter = Math.max(
+      1,
+      Math.ceil((windowStartMs + RATE_LIMIT_WINDOW_MS - now) / 1000)
+    );
+    return jsonCors({ error: 'rate_limited' }, 429, {
+      'Retry-After': String(retryAfter),
+    });
+  }
+
+  // Count this sync against the window (upsert on the user_id primary key).
+  await admin.from('sync_rate_limits').upsert({
+    user_id: userId,
+    window_start: new Date(windowStartMs).toISOString(),
+    count: count + 1,
+  });
 
   // Find-or-create the course.
   const courseCode = parsed.data.courseName.trim().slice(0, 32);
@@ -118,6 +160,13 @@ export async function POST(request: NextRequest) {
   return jsonCors({ inserted, updated, skipped, total: parsed.data.assignments.length });
 }
 
-function jsonCors(body: unknown, status: number = 200): NextResponse {
-  return NextResponse.json(body, { status, headers: corsHeaders() });
+function jsonCors(
+  body: unknown,
+  status: number = 200,
+  extraHeaders?: Record<string, string>
+): NextResponse {
+  return NextResponse.json(body, {
+    status,
+    headers: { ...corsHeaders(), ...extraHeaders },
+  });
 }
