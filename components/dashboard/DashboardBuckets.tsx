@@ -100,6 +100,14 @@ export function DashboardBuckets({
   const openOnly = (items: AssignmentCardData[]) =>
     items.filter((a) => !a.completed_at || fadingIds.has(a.id));
 
+  // When every bucket is empty (no open assignments anywhere) the dashboard is
+  // a blank slate — nudge the user toward the add panel above.
+  const allEmpty =
+    openOnly(buckets.overdue).length === 0 &&
+    openOnly(buckets.today).length === 0 &&
+    openOnly(buckets.thisWeek).length === 0 &&
+    openOnly(buckets.later).length === 0;
+
   return (
     <div className="space-y-5">
       {buckets.overdue.length > 0 ? (
@@ -121,6 +129,8 @@ export function DashboardBuckets({
           fadingIds={fadingIds}
           pendingIds={pendingIds}
           onToggleDone={onToggleDone}
+          countLabel={(n) => `${n} due today`}
+          emptyLabel="nothing due today 🎉"
         />
         <BucketColumn
           title="this week"
@@ -129,6 +139,8 @@ export function DashboardBuckets({
           fadingIds={fadingIds}
           pendingIds={pendingIds}
           onToggleDone={onToggleDone}
+          countLabel={(n) => `${n} due this week`}
+          emptyLabel="nothing here"
         />
         <BucketColumn
           title="later"
@@ -137,8 +149,16 @@ export function DashboardBuckets({
           fadingIds={fadingIds}
           pendingIds={pendingIds}
           onToggleDone={onToggleDone}
+          countLabel={(n) => `${n} later`}
+          emptyLabel="nothing here"
         />
       </div>
+
+      {allEmpty ? (
+        <p className="font-display text-xl text-ink-soft">
+          nothing yet — add your first deadline above.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -175,6 +195,8 @@ function OverdueBanner({
         fadingIds={fadingIds}
         pendingIds={pendingIds}
         onToggleDone={onToggleDone}
+        countLabel={(n) => `${n} overdue`}
+        emptyLabel="nothing here"
       />
     </section>
   );
