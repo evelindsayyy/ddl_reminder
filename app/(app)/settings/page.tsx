@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { ensureUserPrefs } from '@/lib/prefs';
+import { ensureIcsToken, ensureUserPrefs } from '@/lib/prefs';
 import CoursesManager, { type CourseRow } from '@/components/settings/CoursesManager';
 import SettingsForm from '@/components/settings/SettingsForm';
 import RemindersForm from '@/components/settings/RemindersForm';
@@ -39,6 +39,10 @@ export default async function SettingsPage() {
   if (!user) redirect('/login');
 
   const prefs = await ensureUserPrefs(supabase, { id: user.id, email: user.email });
+  // Rows that pre-date migration 0003 (or any insert path that skipped the
+  // token) have ics_token null — mint one before exposing the feed URL, per
+  // the lib/prefs contract. Idempotent for everyone else.
+  const icsToken = prefs.ics_token ?? (await ensureIcsToken(supabase, user.id));
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 
   const { data: courses, error } = await supabase
@@ -82,7 +86,7 @@ export default async function SettingsPage() {
           <IntegrationsPanel
             appUrl={appUrl}
             timezone={prefs.timezone}
-            initialIcsToken={prefs.ics_token}
+            initialIcsToken={icsToken}
             initialCanvasUrl={prefs.canvas_ics_url}
             initialGradescopeToken={prefs.gradescope_sync_token}
             canvasLastSyncAt={prefs.canvas_last_sync_at}
