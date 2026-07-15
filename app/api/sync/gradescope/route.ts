@@ -48,7 +48,8 @@ export async function POST(request: NextRequest) {
     .select('user_id')
     .eq('gradescope_sync_token', parsed.data.token)
     .maybeSingle();
-  if (prefs.error || !prefs.data) return jsonCors({ error: 'unauthorized' }, 401);
+  if (prefs.error) return jsonCors({ error: 'server_error' }, 500);
+  if (!prefs.data) return jsonCors({ error: 'unauthorized' }, 401);
   const userId = prefs.data.user_id;
 
   // Fixed-window rate limit, per user, backed by `sync_rate_limits`.
