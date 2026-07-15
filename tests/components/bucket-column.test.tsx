@@ -96,7 +96,9 @@ describe('DashboardBuckets', () => {
         <DashboardBuckets assignments={[]} timezone={TZ} nowIso="2026-07-15T12:00:00.000Z" />
       </ToastProvider>,
     );
-    expect(screen.getByText('nothing yet — add your first deadline above.')).toBeTruthy();
+    expect(screen.getByText(/nothing yet —/)).toBeTruthy();
+    const nudge = screen.getByRole('link', { name: 'add your first deadline' });
+    expect(nudge.getAttribute('href')).toBe('/assignments');
   });
 
   it('hides the account-level nudge when at least one bucket has an item', () => {
@@ -109,7 +111,7 @@ describe('DashboardBuckets', () => {
         />
       </ToastProvider>,
     );
-    expect(screen.queryByText('nothing yet — add your first deadline above.')).toBeNull();
+    expect(screen.queryByText(/nothing yet —/)).toBeNull();
     expect(screen.getByText('1 due today')).toBeTruthy();
   });
 });
