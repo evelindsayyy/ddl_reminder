@@ -120,7 +120,7 @@ export function PipelineFunnel({ applications, timezone }: PipelineFunnelProps) 
                   {a.next_action ? (
                     <span className="text-ink-soft"> · {a.next_action}</span>
                   ) : null}
-                  <div className="font-mono text-[11px] text-ink-faint">
+                  <div className="font-mono text-xs text-ink-faint">
                     {formatDueAt(a.next_action_at as string, timezone)} · {formatRelative(a.next_action_at as string)}
                   </div>
                 </li>
@@ -132,7 +132,7 @@ export function PipelineFunnel({ applications, timezone }: PipelineFunnelProps) 
         <article className="rounded border border-ink-faint/40 bg-bg-soft p-3">
           <h4 className="mb-1 font-display text-xl">response rate</h4>
           <div className="font-mono text-2xl font-semibold">{responseRateText.rate}</div>
-          <div className="font-mono text-[11px] text-ink-faint">{responseRateText.detail}</div>
+          <div className="font-mono text-xs text-ink-faint">{responseRateText.detail}</div>
         </article>
 
         <article className="rounded border border-ink-faint/40 bg-bg-soft p-3">
@@ -140,7 +140,7 @@ export function PipelineFunnel({ applications, timezone }: PipelineFunnelProps) 
           {decisionDue ? (
             <>
               <div className="font-mono text-sm font-medium">{decisionDue.company}</div>
-              <div className="font-mono text-[11px] text-urgent">
+              <div className="font-mono text-xs text-urgent">
                 {formatDueAt(decisionDue.next_action_at as string, timezone)} ·{' '}
                 {formatRelative(decisionDue.next_action_at as string)}
               </div>

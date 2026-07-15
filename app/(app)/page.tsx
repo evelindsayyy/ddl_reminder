@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ensureUserPrefs } from '@/lib/prefs';
 import { firstRow } from '@/lib/supabaseJoin';
+import { AddDeadline } from '@/components/assignments/AddDeadline';
 import { DashboardBuckets } from '@/components/dashboard/DashboardBuckets';
 import type { AssignmentCardData } from '@/components/dashboard/AssignmentCard';
 
@@ -31,12 +32,22 @@ export default async function DashboardPage() {
   // can still fade out — server-side filter trimmed by completed_at.
   // eslint-disable-next-line react-hooks/purity -- async Server Component: Date.now() computes a per-request DB query cutoff, not render output. The purity rule can't distinguish server from client components; there is no render impurity here.
   const cutoff = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
-  const { data, error } = await supabase
-    .from('assignments')
-    .select(SELECT)
-    .eq('user_id', user.id)
-    .or(`completed_at.is.null,completed_at.gt.${cutoff}`)
-    .order('due_at', { ascending: true });
+  const [assignmentsRes, coursesRes] = await Promise.all([
+    supabase
+      .from('assignments')
+      .select(SELECT)
+      .eq('user_id', user.id)
+      .or(`completed_at.is.null,completed_at.gt.${cutoff}`)
+      .order('due_at', { ascending: true }),
+    supabase
+      .from('courses')
+      .select('code, name, color')
+      .eq('user_id', user.id)
+      .order('code', { ascending: true }),
+  ]);
+
+  const { data, error } = assignmentsRes;
+  const knownCourses = coursesRes.data ?? [];
 
   const rows: AssignmentCardData[] = (data ?? []).map((row) => ({
     id: row.id,
@@ -83,11 +94,17 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="font-display text-3xl font-semibold leading-none text-ink">
+        <h1 className="font-display text-3xl font-semibold leading-none text-ink md:text-4xl">
           {name ? `hey ${name}` : 'hey there'}{' '}
           <span className="font-mono text-base font-normal text-ink-soft">— {todayLabel}</span>
         </h1>
       </header>
+
+      <AddDeadline
+        courses={knownCourses}
+        timezone={prefs.timezone}
+        semesterEndDate={prefs.semester_end_date}
+      />
 
       {failedCount > 0 ? (
         <p className="rounded border border-urgent/40 bg-urgent/5 p-3 text-sm text-urgent">

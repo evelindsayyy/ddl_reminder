@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ensureUserPrefs } from '@/lib/prefs';
 import { firstRow } from '@/lib/supabaseJoin';
-import QuickAdd from '@/components/assignments/QuickAdd';
+import { AddDeadline } from '@/components/assignments/AddDeadline';
 import {
   AssignmentsView,
   type FilterMode,
@@ -99,15 +99,15 @@ export default async function AssignmentsPage({ searchParams }: PageProps) {
   return (
     <section className="space-y-5">
       <header>
-        <h1 className="font-display text-3xl font-semibold leading-none">assignments</h1>
+        <h1 className="font-display text-3xl font-semibold leading-none md:text-4xl">assignments</h1>
         <p className="mt-1 font-mono text-xs text-ink-soft">
           type a line, save, sort by course or month.
         </p>
       </header>
 
-      <QuickAdd
+      <AddDeadline
+        courses={knownCourses}
         timezone={prefs.timezone}
-        knownCourses={knownCourses}
         semesterEndDate={prefs.semester_end_date}
       />
 

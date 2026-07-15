@@ -65,15 +65,25 @@ body {
 /*
  * Patrick Hand has a shorter x-height than Inter / system sans, so the
  * effective glyph height looks ~1px smaller at the same `text-*` token.
- * Bump the root size up a hair so spec sizes (text-sm = 14, text-base = 16)
- * still feel right.
+ * The root size is bumped so spec sizes (text-sm, text-base) still feel right,
+ * and raised again for the readability pass — the deployed type read too small.
+ * Tailwind's rem-based `text-*` scale rides on this root, so every non-fixed
+ * size scales up together.
  */
 html {
-  font-size: 16.5px;
+  font-size: 18px;
 }
 
 @media (max-width: 640px) {
   html {
-    font-size: 15.5px;
+    font-size: 16.5px;
   }
+}
+
+/*
+ * Handwritten faces need extra leading to breathe. Tailwind preflight sets the
+ * base line-height to 1.5; bump the body (Patrick Hand / sans face) to 1.6.
+ */
+body {
+  line-height: 1.6;
 }
