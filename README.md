@@ -9,10 +9,11 @@ it parses, schedules email reminders, syncs to Apple Calendar, imports from Canv
 and Gradescope, and tracks application pipelines — deployed on Vercel as an
 installable mobile PWA.
 
-[![Next.js 14](https://img.shields.io/badge/Next.js-14-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
+&nbsp;[![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
 &nbsp;[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 &nbsp;[![Supabase](https://img.shields.io/badge/Supabase-Postgres-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/)
-&nbsp;[![tests](https://img.shields.io/badge/tests-563%20passing-brightgreen)](.github/workflows/ci.yml)
+&nbsp;[![tests](https://img.shields.io/badge/tests-705%20passing-brightgreen)](.github/workflows/ci.yml)
 &nbsp;[![CI](https://github.com/evelindsayyy/ddl_reminder/actions/workflows/ci.yml/badge.svg)](https://github.com/evelindsayyy/ddl_reminder/actions/workflows/ci.yml)
 
 </div>
@@ -24,7 +25,7 @@ extending the project; this README is the install + run guide.
 
 | Layer          | Choice                              |
 |----------------|-------------------------------------|
-| Framework      | Next.js 14 App Router + TypeScript  |
+| Framework      | Next.js 16 App Router + TypeScript (React 19) |
 | Styling        | Tailwind CSS (hand-drawn type system: Patrick Hand / Caveat / JetBrains Mono) |
 | Database       | Supabase Postgres + Row-Level Security |
 | Auth           | Supabase Auth (email magic link)    |
@@ -57,12 +58,37 @@ extending the project; this README is the install + run guide.
 - **Canvas import.** Paste your Canvas `.ics` calendar feed URL into Settings,
   the daily cron upserts your assignments. No OAuth, no API tokens.
 - **Gradescope sync.** SSO-friendly bookmarklet — drag to bookmarks bar, click
-  on any Gradescope course page, assignments sync to your account.
+  on any Gradescope course page, assignments sync to your account. Rate-limited
+  server-side (10 syncs/hour/user, DB-backed fixed window) to keep a runaway
+  bookmarklet click from hammering the endpoint.
 - **Email reminders.** At configurable offsets before each deadline (default
   168h / 48h / 12h). QStash schedules; Resend sends. Daily cron sweeper catches
   anything QStash drops.
+- **Editable timezone.** Settings lets you pick your IANA timezone from a
+  full `Intl.supportedValuesOf('timeZone')` list — every date parse, dashboard
+  bucket, and reminder fire time follows it.
 - **Mobile PWA.** Responsive collapse to single column, bottom tab nav, sticky
-  add bar. Install to home screen.
+  add bar. Installable home-screen icon set (192/512/maskable PNGs generated
+  from `public/icon.svg` via `scripts/generate-icons.mjs`).
+
+## Screenshots
+
+<!-- TODO(owner): the authed UI (dashboard, kanban, settings) can't be
+     screenshotted headlessly — auth is Supabase email magic-link, so there's
+     no scriptable login for a CI/agent screenshot job. Capture by hand:
+       1. Sign in on desktop Chrome at 1440x900, go to the dashboard
+          (today/this week/later buckets populated with a few real or seed
+          assignments — not an empty state).
+       2. Save as docs/images/dashboard-desktop.png.
+       3. Open the same dashboard on a phone (or Chrome DevTools device
+          toolbar at 390x844, iPhone 12/13 size) with the PWA installed to
+          home screen if possible, to show the standalone chrome.
+       4. Save as docs/images/dashboard-mobile.png.
+       5. Replace this comment with:
+          ![Dashboard](docs/images/dashboard-desktop.png)
+          ![Dashboard on mobile](docs/images/dashboard-mobile.png)
+     Keep both under ~500KB (PNG, cropped to the browser viewport, no OS
+     chrome) so the README stays fast to load. -->
 
 ## Setup
 
@@ -74,7 +100,7 @@ cd ddl_reminder
 npm install
 ```
 
-Requires Node ≥ 18 (uses `crypto.randomUUID` and `next/font`).
+Requires Node ≥ 20 (`"engines"` in `package.json`; Next 16's minimum).
 
 ### 2. Configure environment
 
@@ -104,11 +130,12 @@ Paste each file in [supabase/migrations](supabase/migrations) into the Supabase
 SQL Editor in order:
 
 ```
-0001_init.sql            — courses, assignments, applications, reminders, user_prefs + RLS
-0002_integrations.sql    — source tracking, recurrence groups, integration columns
-0003_ics_token.sql       — outbound calendar feed token
-0004_sync_status.sql     — Canvas last-sync timestamp + error
-0005_assignment_tags.sql — tags[] column on assignments
+0001_init.sql              — courses, assignments, applications, reminders, user_prefs + RLS
+0002_integrations.sql      — source tracking, recurrence groups, integration columns
+0003_ics_token.sql         — outbound calendar feed token
+0004_sync_status.sql       — Canvas last-sync timestamp + error
+0005_assignment_tags.sql   — tags[] column on assignments
+0006_sync_rate_limits.sql  — sync_rate_limits table (Gradescope bookmarklet rate limit)
 ```
 
 ### 4. Configure Supabase Auth
@@ -129,21 +156,36 @@ email, click the magic link, you're in.
 ## Commands
 
 ```bash
-npm run dev          # Next.js dev server with hot reload
-npm run build        # production build
-npm run start        # serve the production build
-npm run lint         # next lint
-npm run typecheck    # tsc --noEmit
-npm test             # unit suites: recurrence + bucket + score + canvas + ics + format + prefs (assertions)
-npm run test:parser  # smoke-test the NL parser against §7 cases
+npm run dev             # Next.js dev server with hot reload
+npm run build           # production build
+npm run start           # serve the production build
+npm run lint            # eslint . (flat config, eslint.config.mjs)
+npm run typecheck       # tsc --noEmit
+npm test                # tsx pure-lib chain: parser, recurrence, bucket, score, canvas, ics, …
+npm run test:unit       # vitest — route + component tests (jsdom, RTL)
+npm run test:all        # canonical local gate — npm test && vitest run
+npm run test:parser     # smoke-test the NL parser against §7 cases (print-only)
+npm run icons:generate  # regenerate public/icon-{192,512,maskable-512}.png from icon.svg
 ```
+
+### Dual test harness
+
+There are two separate test runners, and CI runs both as distinct steps:
+`npm test` is a chain of `tsx <file>.test.ts` runs over the pure-function
+modules (no DB, no React — plain assertions, `process.exit(1)` on failure);
+`npm run test:unit` is vitest for route handlers and components (webhook,
+cron, gradescope, assignments routes; toast/stage-actions/quickadd
+components). `npm run test:all` runs both and is the gate to run locally
+before pushing — don't assume either suite alone covers the other. See
+[CLAUDE.md §11](CLAUDE.md#11-commands) for the full breakdown.
 
 ### CI
 
-GitHub Actions (`.github/workflows/ci.yml`) runs `npm run typecheck` and
-`npm test` on every push to `main` and on pull requests. It does **not** run
-`next build` (that needs Supabase/QStash secrets) or `next lint` — ESLint is
-not configured, so `npm run lint` is opt-in only.
+GitHub Actions (`.github/workflows/ci.yml`) runs, on every push to `main`
+and on pull requests: `npm run typecheck`, `npm run lint` (ESLint 9 flat
+config), `npm test`, and `npm run test:unit`. It does **not** run
+`next build` (that needs Supabase/QStash secrets) — that gate is manual,
+against a Vercel preview deploy, before merging to `main`.
 
 ## Subscribing to your calendar feed
 
@@ -225,9 +267,9 @@ components/
   settings/             — CoursesManager, SettingsForm, RemindersForm, IntegrationsPanel
   layout/               — MobileBottomNav (md:hidden tabs), MobileAddBar (sticky add bar)
   ui/                   — CourseChip, TypePill, RelativeTime
-supabase/migrations/    — 0001 init · 0002 integrations · 0003 ics_token · 0004 sync_status · 0005 assignment_tags
+supabase/migrations/    — 0001 init · 0002 integrations · 0003 ics_token · 0004 sync_status · 0005 assignment_tags · 0006 sync_rate_limits
 design/                 — wireframes (index.html + *.jsx), HANDOFF, DESIGN_TOKENS
-docs/                   — design specs
+docs/                   — FINISH_PLAN.md, weekly implementation plans, images/ (README screenshot slot)
 ```
 
 ## Design system
