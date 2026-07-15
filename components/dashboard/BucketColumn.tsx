@@ -51,7 +51,7 @@ export function BucketColumn({
         >
           {title}
         </h2>
-        <span className="font-mono text-[11px] text-ink-faint">
+        <span className="font-mono text-xs text-ink-faint">
           {visible.length} open
         </span>
       </header>

@@ -22,7 +22,7 @@ export default function SignOutButton() {
       type="button"
       onClick={onClick}
       disabled={pending}
-      className="font-mono text-[11px] text-ink-faint underline hover:text-ink disabled:opacity-60"
+      className="font-mono text-xs text-ink-faint underline hover:text-ink disabled:opacity-60"
     >
       {pending ? 'signing out…' : 'sign out'}
     </button>

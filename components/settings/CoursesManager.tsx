@@ -136,7 +136,7 @@ export default function CoursesManager({ courses }: Props) {
         </button>
       </form>
 
-      {error ? <div className="font-mono text-[11px] text-urgent">{error}</div> : null}
+      {error ? <div className="font-mono text-xs text-urgent">{error}</div> : null}
 
       {courses.length === 0 ? (
         <p className="font-mono text-xs text-ink-faint">
@@ -175,7 +175,7 @@ export default function CoursesManager({ courses }: Props) {
                       type="button"
                       onClick={() => setEditingId(c.id)}
                       disabled={rowPending}
-                      className="font-mono text-[11px] text-ink-soft hover:text-ink disabled:opacity-60"
+                      className="font-mono text-xs text-ink-soft hover:text-ink disabled:opacity-60"
                     >
                       edit
                     </button>
@@ -183,7 +183,7 @@ export default function CoursesManager({ courses }: Props) {
                       type="button"
                       onClick={() => onDelete(c)}
                       disabled={rowPending}
-                      className="font-mono text-[11px] text-ink-faint hover:text-urgent disabled:opacity-60"
+                      className="font-mono text-xs text-ink-faint hover:text-urgent disabled:opacity-60"
                     >
                       delete
                     </button>

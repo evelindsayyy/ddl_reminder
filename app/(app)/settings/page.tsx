@@ -22,7 +22,7 @@ function SettingsRow({ label, note, children }: SettingsRowProps) {
         <div className="md:w-44 md:shrink-0">
           <div className="text-sm font-medium text-ink">{label}</div>
           {note ? (
-            <div className="mt-0.5 font-mono text-[11px] text-ink-faint">{note}</div>
+            <div className="mt-0.5 font-mono text-xs text-ink-faint">{note}</div>
           ) : null}
         </div>
         <div className="flex-1">{children}</div>
@@ -50,7 +50,7 @@ export default async function SettingsPage() {
   return (
     <section className="space-y-6">
       <header>
-        <h1 className="font-display text-3xl font-semibold leading-none">settings</h1>
+        <h1 className="font-display text-3xl font-semibold leading-none md:text-4xl">settings</h1>
         <p className="mt-1 font-mono text-xs text-ink-soft">
           {user.email} · timezone <span className="text-ink">{prefs.timezone}</span>
         </p>

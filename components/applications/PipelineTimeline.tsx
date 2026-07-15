@@ -63,14 +63,14 @@ export function PipelineTimeline({ applications, timezone }: PipelineTimelinePro
               </span>
               <span
                 className={cn(
-                  'font-mono text-[11px]',
+                  'font-mono text-xs',
                   overdue ? 'text-urgent' : 'text-ink-faint'
                 )}
               >
                 · {formatRelative(a.next_action_at as string)}
               </span>
               {overdue ? (
-                <span className="rounded-sm bg-urgent/10 px-1.5 py-0.5 font-mono text-[10px] uppercase text-urgent">
+                <span className="rounded-sm bg-urgent/10 px-1.5 py-0.5 font-mono text-xs uppercase text-urgent">
                   missed
                 </span>
               ) : null}

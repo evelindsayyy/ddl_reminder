@@ -52,7 +52,7 @@ export function GroupedByCourseList({
                 no course
               </span>
             )}
-            <span className="font-mono text-[11px] text-ink-faint">
+            <span className="font-mono text-xs text-ink-faint">
               {g.open.length} open
             </span>
             <div className="flex-1 border-t border-dashed border-ink-faint/50" />

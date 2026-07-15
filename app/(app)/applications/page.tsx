@@ -44,7 +44,7 @@ export default async function ApplicationsPage({ searchParams }: PageProps) {
     <section className="space-y-5">
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl font-semibold leading-none">internships</h1>
+          <h1 className="font-display text-3xl font-semibold leading-none md:text-4xl">internships</h1>
           <p className="mt-1 font-mono text-xs text-ink-soft">
             kanban · timeline · funnel
           </p>

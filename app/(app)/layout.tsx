@@ -32,13 +32,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-base hover:text-ink"
+                className="text-lg hover:text-ink"
               >
                 {item.label}
               </Link>
             ))}
           </div>
-          <span className="font-mono text-[11px] text-ink-faint">{user.email}</span>
+          <span className="font-mono text-xs text-ink-faint">{user.email}</span>
           <SignOutButton />
         </nav>
       </header>
@@ -46,7 +46,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {/* Mobile compact header — brand + email */}
       <header className="flex items-center justify-between border-b border-ink-faint/40 px-4 py-3 md:hidden">
         <span className="font-display text-2xl font-semibold leading-none">deadlines.</span>
-        <span className="font-mono text-[10px] text-ink-faint">{user.email}</span>
+        <span className="font-mono text-xs text-ink-faint">{user.email}</span>
       </header>
 
       <main className="mx-auto max-w-5xl px-4 pb-32 pt-6 md:pb-12">{children}</main>

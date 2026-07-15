@@ -99,7 +99,7 @@ export default async function AssignmentsPage({ searchParams }: PageProps) {
   return (
     <section className="space-y-5">
       <header>
-        <h1 className="font-display text-3xl font-semibold leading-none">assignments</h1>
+        <h1 className="font-display text-3xl font-semibold leading-none md:text-4xl">assignments</h1>
         <p className="mt-1 font-mono text-xs text-ink-soft">
           type a line, save, sort by course or month.
         </p>

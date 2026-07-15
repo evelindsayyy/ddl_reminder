@@ -83,7 +83,7 @@ export function ApplicationsView({
             </button>
           ))}
         </div>
-        <span className="font-mono text-[11px] text-ink-faint">
+        <span className="font-mono text-xs text-ink-faint">
           {applications.length} total
         </span>
       </div>
