@@ -3,11 +3,12 @@ import { createClient } from '@/lib/supabase/server';
 import { updateCourseSchema } from '@/lib/schemas';
 
 interface RouteContext {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  const supabase = createClient();
+  const { id } = await params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -33,7 +34,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const { data, error } = await supabase
     .from('courses')
     .update(patch)
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', user.id)
     .select('id, code, name, color, created_at')
     .single();
@@ -49,7 +50,8 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 }
 
 export async function DELETE(_: NextRequest, { params }: RouteContext) {
-  const supabase = createClient();
+  const { id } = await params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -60,7 +62,7 @@ export async function DELETE(_: NextRequest, { params }: RouteContext) {
   const { error } = await supabase
     .from('courses')
     .delete()
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', user.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

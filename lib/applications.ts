@@ -38,7 +38,7 @@ export async function createApplication(input: CreateApplicationInput): Promise<
   const parsed = createApplicationSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid_input' };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -88,7 +88,7 @@ export async function updateApplication(
   const parsed = updateApplicationSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid_input' };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -142,7 +142,7 @@ export async function moveApplicationToLane(
   id: string,
   targetLane: DisplayStage
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -194,7 +194,7 @@ export async function moveApplicationToLane(
 }
 
 export async function deleteApplication(id: string): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

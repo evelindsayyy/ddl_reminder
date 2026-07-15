@@ -12,7 +12,7 @@ const SELECT =
 
 // GET /api/assignments?status=open|done|all
 export async function GET(request: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 // POST /api/assignments
 // Body: CreateAssignmentInput (optionally with `recurrence` for series expansion)
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

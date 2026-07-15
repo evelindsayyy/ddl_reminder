@@ -4,13 +4,14 @@ import { buildIcs } from '@/lib/ics';
 import { firstRow } from '@/lib/supabaseJoin';
 
 interface RouteContext {
-  params: { token: string };
+  params: Promise<{ token: string }>;
 }
 
 // Public endpoint. Apple Calendar can't send cookies, so the URL token
 // IS the auth. We use the service-role client because we have NO user
 // session here — token → user_id is the only mapping.
 export async function GET(_: NextRequest, { params }: RouteContext) {
+  const { token } = await params;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
@@ -26,7 +27,7 @@ export async function GET(_: NextRequest, { params }: RouteContext) {
   const prefs = await admin
     .from('user_prefs')
     .select('user_id, email, timezone, ics_token')
-    .eq('ics_token', params.token)
+    .eq('ics_token', token)
     .maybeSingle();
 
   if (prefs.error || !prefs.data) {

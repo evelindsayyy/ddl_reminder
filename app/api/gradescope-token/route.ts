@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { ensureGradescopeSyncToken } from '@/lib/prefs';
 
 export async function GET() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

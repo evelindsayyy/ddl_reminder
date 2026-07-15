@@ -11,7 +11,7 @@ import type { ApplicationCardData } from '@/components/applications/ApplicationC
 export const dynamic = 'force-dynamic';
 
 interface PageProps {
-  searchParams?: { view?: string };
+  searchParams?: Promise<{ view?: string }>;
 }
 
 function parseView(raw: string | undefined): AppViewMode {
@@ -20,14 +20,15 @@ function parseView(raw: string | undefined): AppViewMode {
 }
 
 export default async function ApplicationsPage({ searchParams }: PageProps) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
   const prefs = await ensureUserPrefs(supabase, { id: user.id, email: user.email });
-  const view = parseView(searchParams?.view);
+  const sp = await searchParams;
+  const view = parseView(sp?.view);
 
   const { data, error } = await supabase
     .from('applications')

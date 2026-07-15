@@ -16,7 +16,7 @@ const SELECT =
   'id, title, type, due_at, completed_at, notes, estimated_hours, actual_hours, tags, course_id, recurrence_group_id, source, external_url, courses(code, name, color)';
 
 interface PageProps {
-  searchParams?: { view?: string; filter?: string };
+  searchParams?: Promise<{ view?: string; filter?: string }>;
 }
 
 function parseView(raw: string | undefined): ViewMode {
@@ -29,15 +29,16 @@ function parseFilter(raw: string | undefined): FilterMode {
 }
 
 export default async function AssignmentsPage({ searchParams }: PageProps) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
   const prefs = await ensureUserPrefs(supabase, { id: user.id, email: user.email });
-  const view = parseView(searchParams?.view);
-  const filter = parseFilter(searchParams?.filter);
+  const sp = await searchParams;
+  const view = parseView(sp?.view);
+  const filter = parseFilter(sp?.filter);
 
   // For 'open' filter (default), only fetch open + recently-done so the
   // optimistic fade has something to display. For 'done' / 'all', fetch all.

@@ -9,7 +9,7 @@ import {
 } from '@/lib/reminders';
 
 interface RouteContext {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 const SELECT =
@@ -23,7 +23,8 @@ const SELECT =
 //                 (same recurrence_group_id, due_at > now). Per-occurrence
 //                 fields (due_at, completed_at, actual_hours) are never shared.
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  const supabase = createClient();
+  const { id } = await params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -55,7 +56,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const { data, error } = await supabase
     .from('assignments')
     .update(patch)
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', user.id)
     .select(SELECT)
     .single();
@@ -71,12 +72,12 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     parsed.data.completedAt !== undefined && parsed.data.completedAt === null;
 
   if (completedNowDone) {
-    void cancelAssignmentReminders(user.id, params.id);
+    void cancelAssignmentReminders(user.id, id);
   } else if (dueChanged || completedNowOpen) {
     const prefs = await ensureUserPrefs(supabase, { id: user.id, email: user.email });
     void scheduleAssignmentReminders({
       userId: user.id,
-      assignmentId: params.id,
+      assignmentId: id,
       dueAtIso: data.due_at,
       reminderOffsetsHours: prefs.reminder_offsets_hours,
       appUrl: process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000',
@@ -95,7 +96,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         .update(seriesPatch, { count: 'exact' })
         .eq('user_id', user.id)
         .eq('recurrence_group_id', data.recurrence_group_id)
-        .neq('id', params.id)
+        .neq('id', id)
         .gt('due_at', nowIso);
 
       if (seriesError) {
@@ -113,7 +114,8 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 // - scope=series: deletes all rows in this row's recurrence_group_id
 //                 with due_at > now() (i.e. future occurrences).
 export async function DELETE(request: NextRequest, { params }: RouteContext) {
-  const supabase = createClient();
+  const { id } = await params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -125,7 +127,7 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     const row = await supabase
       .from('assignments')
       .select('recurrence_group_id, due_at')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -163,11 +165,11 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
   }
 
   // scope === 'one'. Cancel before deleting — see the series note above.
-  await cancelAssignmentReminders(user.id, params.id);
+  await cancelAssignmentReminders(user.id, id);
   const { error } = await supabase
     .from('assignments')
     .delete()
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', user.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -105,7 +105,7 @@ describe('app/api/assignments/[id]', () => {
 
     const res = await PATCH(
       makeRequest('https://ddl.example.com/api/assignments/a1', { title: 'x' }),
-      { params: { id: 'a1' } }
+      { params: Promise.resolve({ id: 'a1' }) }
     );
 
     expect(res.status).toBe(401);
@@ -128,7 +128,7 @@ describe('app/api/assignments/[id]', () => {
       makeRequest('https://ddl.example.com/api/assignments/a1', {
         dueAt: '2026-08-01T12:00:00.000Z',
       }),
-      { params: { id: 'a1' } }
+      { params: Promise.resolve({ id: 'a1' }) }
     );
 
     expect(res.status).toBe(200);
@@ -146,7 +146,7 @@ describe('app/api/assignments/[id]', () => {
 
     const res = await DELETE(
       makeRequest('https://ddl.example.com/api/assignments/a1'),
-      { params: { id: 'a1' } }
+      { params: Promise.resolve({ id: 'a1' }) }
     );
 
     expect(res.status).toBe(200);
@@ -173,7 +173,7 @@ describe('app/api/assignments/[id]', () => {
 
     const res = await DELETE(
       makeRequest('https://ddl.example.com/api/assignments/a1?scope=series'),
-      { params: { id: 'a1' } }
+      { params: Promise.resolve({ id: 'a1' }) }
     );
 
     expect(res.status).toBe(200);
