@@ -63,13 +63,23 @@ Then add the variables to `<body className={...}>`.
 When using Caveat at sizes ≥ `text-2xl` apply `font-semibold` (600) — the
 regular weight is too thin at display sizes.
 
-**Bump base size up by ~1px globally** because Patrick Hand has shorter
-x-height than Inter. In `app/globals.css`:
+**Root type scale.** The root font-size is raised globally so the rem-based
+`text-*` scale reads comfortably — Patrick Hand has a shorter x-height than
+Inter, and the deployed app read too small. In `app/globals.css`:
 
 ```css
-html { font-size: 16.5px; }
-@media (max-width: 640px) { html { font-size: 15.5px; } }
+html { font-size: 18px; }
+@media (max-width: 640px) { html { font-size: 16.5px; } }
+body { line-height: 1.6; }   /* handwritten faces need extra leading */
 ```
+
+Every non-fixed `text-*` class is rem-relative, so it scales with this root.
+At `18px` root, `text-xs` (0.75rem) ≈ 13.5px.
+
+**Type floor rule.** The smallest allowed size class is **`text-xs`**. Fixed-px
+bracket sizes below it (`text-[10px]`, `text-[11px]`) are **banned** — they are
+absolute px, so they silently defeat the root scale and stay tiny. Use `text-xs`
+instead. `grep -rn "text-\[1[01]px\]" app components` must return empty.
 
 **Readability check:** if Patrick Hand becomes hard to scan in dense
 data tables (lots of small text in a tight grid), use `font-mono`

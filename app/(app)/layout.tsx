@@ -1,9 +1,9 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import SignOutButton from './SignOutButton';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { MobileAddBar } from '@/components/layout/MobileAddBar';
+import { NavLinks } from '@/components/layout/NavLinks';
 import { ToastProvider } from '@/components/ui/Toast';
 
 const NAV = [
@@ -27,18 +27,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <header className="hidden border-b border-ink-faint/40 md:block">
         <nav className="mx-auto flex max-w-5xl items-center gap-x-6 gap-y-2 px-4 py-3">
           <span className="font-display text-2xl font-semibold leading-none">deadlines.</span>
-          <div className="flex flex-1 gap-x-5 text-ink-soft">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="text-base hover:text-ink"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-          <span className="font-mono text-[11px] text-ink-faint">{user.email}</span>
+          <NavLinks items={NAV} />
+          <span className="font-mono text-xs text-ink-faint">{user.email}</span>
           <SignOutButton />
         </nav>
       </header>
@@ -46,7 +36,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {/* Mobile compact header — brand + email */}
       <header className="flex items-center justify-between border-b border-ink-faint/40 px-4 py-3 md:hidden">
         <span className="font-display text-2xl font-semibold leading-none">deadlines.</span>
-        <span className="font-mono text-[10px] text-ink-faint">{user.email}</span>
+        <span className="font-mono text-xs text-ink-faint">{user.email}</span>
       </header>
 
       <main className="mx-auto max-w-5xl px-4 pb-32 pt-6 md:pb-12">{children}</main>

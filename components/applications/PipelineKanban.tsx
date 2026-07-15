@@ -121,10 +121,10 @@ export function PipelineKanban({ applications, timezone }: PipelineKanbanProps) 
                 >
                   {lane.label}
                 </h3>
-                <span className="font-mono text-[11px] text-ink-faint">{items.length}</span>
+                <span className="font-mono text-xs text-ink-faint">{items.length}</span>
               </header>
               {items.length === 0 ? (
-                <p className="py-2 text-center font-mono text-[11px] text-ink-faint">—</p>
+                <p className="py-2 text-center font-mono text-xs text-ink-faint">—</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {items.map((a) => (

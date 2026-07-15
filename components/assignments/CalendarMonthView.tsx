@@ -101,7 +101,7 @@ export function CalendarMonthView({
         {WEEKDAYS.map((d) => (
           <div
             key={d}
-            className="border-b border-ink-faint/40 bg-bg-dim/60 px-2 py-1 font-mono text-[10px] uppercase text-ink-soft"
+            className="border-b border-ink-faint/40 bg-bg-dim/60 px-2 py-1 font-mono text-xs uppercase text-ink-soft"
           >
             {d}
           </div>
@@ -137,7 +137,7 @@ export function CalendarMonthView({
                 <span
                   key={it.id}
                   className={cn(
-                    'truncate rounded-sm border-l-[3px] px-1 py-px text-[11px]',
+                    'truncate rounded-sm border-l-[3px] px-1 py-px text-xs',
                     it.completed_at && 'line-through opacity-60'
                   )}
                   style={{
@@ -150,7 +150,7 @@ export function CalendarMonthView({
                 </span>
               ))}
               {cell.items.length > 3 ? (
-                <span className="font-mono text-[10px] text-ink-soft">
+                <span className="font-mono text-xs text-ink-soft">
                   +{cell.items.length - 3} more
                 </span>
               ) : null}

@@ -79,7 +79,7 @@ export function SwimLaneTimeline({
         {/* axis header */}
         <div className="flex border-b border-ink-faint/60 bg-bg-dim/50">
           <div
-            className="shrink-0 border-r border-ink-faint/40 px-3 py-2 font-mono text-[10px] uppercase tracking-wide text-ink-soft"
+            className="shrink-0 border-r border-ink-faint/40 px-3 py-2 font-mono text-xs uppercase tracking-wide text-ink-soft"
             style={{ width: LANE_LEFT_PX }}
           >
             course
@@ -88,13 +88,13 @@ export function SwimLaneTimeline({
             {axisLabels.map((m) => (
               <div
                 key={m.iso}
-                className="absolute top-0 -translate-x-1/2 px-1 py-2 font-mono text-[10px] text-ink-soft"
+                className="absolute top-0 -translate-x-1/2 px-1 py-2 font-mono text-xs text-ink-soft"
                 style={{ left: `${m.percent}%` }}
               >
                 {m.label}
               </div>
             ))}
-            <div className="invisible py-2 font-mono text-[10px]">.</div>
+            <div className="invisible py-2 font-mono text-xs">.</div>
           </div>
         </div>
 
@@ -168,7 +168,7 @@ export function SwimLaneTimeline({
       </div>
 
       {/* legend */}
-      <div className="flex items-center gap-4 font-mono text-[11px] text-ink-faint">
+      <div className="flex items-center gap-4 font-mono text-xs text-ink-faint">
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block h-px w-4 border-t-[1.5px] border-dashed border-urgent" />
           today
@@ -360,7 +360,7 @@ function EditPanel({
           <CourseChip code={a.courses.code} color={a.courses.color} size="sm" />
         ) : null}
         <TypePill type={a.type as Parameters<typeof TypePill>[0]['type']} />
-        <span className="font-mono text-[11px] text-ink-soft">
+        <span className="font-mono text-xs text-ink-soft">
           {formatDueAt(a.due_at, timezone)} · {formatRelative(a.due_at)}
         </span>
       </div>

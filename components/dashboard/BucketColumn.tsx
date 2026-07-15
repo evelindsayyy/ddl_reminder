@@ -15,6 +15,11 @@ export interface BucketColumnProps {
   // Ids with an outstanding mark-done PATCH — the card dims + disables.
   pendingIds: ReadonlySet<string>;
   onToggleDone: (id: string, completedAt: string | null) => void;
+  // Prose counter copy, e.g. `(n) => `${n} due today``. Passed from
+  // DashboardBuckets so BucketColumn stays generic.
+  countLabel: (n: number) => string;
+  // Per-bucket empty-state copy, e.g. `nothing due today 🎉`.
+  emptyLabel: string;
   // Visual emphasis — true for "today" + the overdue banner.
   urgent?: boolean;
   // When true, bucket column expands and items render in a flat grid (mobile).
@@ -28,6 +33,8 @@ export function BucketColumn({
   fadingIds,
   pendingIds,
   onToggleDone,
+  countLabel,
+  emptyLabel,
   urgent = false,
   flat = false,
 }: BucketColumnProps) {
@@ -51,13 +58,11 @@ export function BucketColumn({
         >
           {title}
         </h2>
-        <span className="font-mono text-[11px] text-ink-faint">
-          {visible.length} open
-        </span>
+        <span className="text-sm text-ink-faint">{countLabel(visible.length)}</span>
       </header>
 
       {visible.length === 0 ? (
-        <p className="py-2 text-center font-display text-lg text-ink-faint">~</p>
+        <p className="py-2 text-center font-display text-lg text-ink-faint">{emptyLabel}</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {visible.map((a) => (

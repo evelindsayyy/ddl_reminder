@@ -61,14 +61,14 @@ export function ApplicationCard({
       <header className="flex items-baseline justify-between gap-2">
         <div className="min-w-0">
           <div className="text-base font-semibold leading-snug text-ink truncate">{a.company}</div>
-          <div className="font-mono text-[11px] text-ink-soft truncate">{a.role}</div>
+          <div className="font-mono text-xs text-ink-soft truncate">{a.role}</div>
         </div>
         {variant === 'timeline' ? <StageBadge stage={display} /> : null}
       </header>
 
       {a.next_action ? (
         <div className="mt-2 border-t border-dashed border-ink-faint/50 pt-2">
-          <div className="text-[10px] font-medium uppercase tracking-wide text-ink-faint">next:</div>
+          <div className="text-xs font-medium uppercase tracking-wide text-ink-faint">next:</div>
           <div className="text-sm text-ink leading-snug">{a.next_action}</div>
           {/* Timeline dedupes the due time: PipelineTimeline's rail already
               renders formatDueAt · formatRelative with the `missed` styling, so
@@ -76,7 +76,7 @@ export function ApplicationCard({
           {next && variant === 'kanban' ? (
             <div
               className={cn(
-                'mt-0.5 font-mono text-[11px]',
+                'mt-0.5 font-mono text-xs',
                 urgent ? 'font-medium text-urgent' : 'text-ink-soft'
               )}
             >
@@ -110,7 +110,7 @@ export function StageBadge({ stage }: { stage: DisplayStage }) {
   return (
     <span
       className={cn(
-        'shrink-0 rounded-sm border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide',
+        'shrink-0 rounded-sm border px-1.5 py-0.5 font-mono text-xs uppercase tracking-wide',
         STAGE_COLOR_CLASS[stage]
       )}
     >

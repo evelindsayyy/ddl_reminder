@@ -15,7 +15,7 @@ export function TypePill({ type, className }: TypePillProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-sm border border-ink-faint bg-bg-soft px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-ink-soft',
+        'inline-flex items-center rounded-sm border border-ink-faint bg-bg-soft px-1.5 py-0.5 text-xs uppercase tracking-wide text-ink-soft',
         className
       )}
     >

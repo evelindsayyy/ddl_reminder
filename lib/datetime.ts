@@ -76,3 +76,61 @@ export function startOfNextDayInZone(now: Date, tz: string): Date {
   const midNextDay = new Date(startToday.getTime() + 36 * 60 * 60 * 1000);
   return startOfDayInZone(midNextDay, tz);
 }
+
+/**
+ * Returns the UTC ISO instant for a `YYYY-MM-DD` + `HH:mm` WALL TIME read in
+ * the given IANA zone — or null when the date/time don't parse.
+ *
+ * This generalizes startOfDayInZone's offset round-trip: the wall time is
+ * first built as a fake-UTC instant, the zone's offset *at that instant* is
+ * measured via Intl (so DST on the target date is honored), and subtracting
+ * the offset yields the real instant. The browser/server's own zone never
+ * participates — unlike `new Date('YYYY-MM-DDTHH:mm')`, which reads the wall
+ * time in the machine's local zone. The detailed add form uses this so its
+ * dueAt matches what /api/parse produces for the same wall time in the user's
+ * configured timezone pref.
+ *
+ * Example: wallTimeToIsoInZone('2026-07-20', '23:59', 'America/New_York')
+ *   → '2026-07-21T03:59:00.000Z'  (23:59 EDT, UTC-4)
+ */
+export function wallTimeToIsoInZone(date: string, time: string, tz: string): string | null {
+  // Shape guards first: engines fall back to lenient legacy Date.parse for
+  // non-ISO strings (e.g. an empty date/time still "parses"), so only the
+  // exact input-element formats are accepted.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) return null;
+  // Fake-UTC instant carrying the wall-time fields. Out-of-range fields
+  // (e.g. month 13) make an Invalid Date here → null.
+  const fakeUtc = new Date(`${date}T${time}:00Z`);
+  if (Number.isNaN(fakeUtc.getTime())) return null;
+  try {
+    // What the zone's clock reads at that instant (en-CA gives ISO-style parts).
+    const zoneStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).format(fakeUtc);
+    const m = zoneStr.match(/(\d{4})-(\d{2})-(\d{2}),?\s*(\d{2}):(\d{2}):(\d{2})/);
+    if (!m) return null;
+    const fakeAsUtc = Date.UTC(
+      Number(m[1]),
+      Number(m[2]) - 1,
+      Number(m[3]),
+      Number(m[4]),
+      Number(m[5]),
+      Number(m[6]),
+    );
+    // Zone offset at that instant, in ms; subtracting it converts the wall
+    // time from "pretend UTC" to the actual UTC instant.
+    const offsetMs = fakeAsUtc - fakeUtc.getTime();
+    return new Date(fakeUtc.getTime() - offsetMs).toISOString();
+  } catch {
+    // Invalid IANA zone — Intl throws. Callers pass the validated timezone
+    // pref, so treat this like any other unparseable input.
+    return null;
+  }
+}

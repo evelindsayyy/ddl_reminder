@@ -67,7 +67,7 @@ export default function SettingsForm({
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
-        <label htmlFor="semester_end_date" className="font-mono text-[11px] text-ink-faint">
+        <label htmlFor="semester_end_date" className="font-mono text-xs text-ink-faint">
           semester end date
         </label>
         <input
@@ -82,7 +82,7 @@ export default function SettingsForm({
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="timezone" className="font-mono text-[11px] text-ink-faint">
+        <label htmlFor="timezone" className="font-mono text-xs text-ink-faint">
           timezone
         </label>
         <select
@@ -109,7 +109,7 @@ export default function SettingsForm({
         >
           {saving ? 'saving…' : 'save'}
         </button>
-        {message ? <span className="font-mono text-[11px] text-success">{message}</span> : null}
+        {message ? <span className="font-mono text-xs text-success">{message}</span> : null}
       </div>
     </form>
   );
