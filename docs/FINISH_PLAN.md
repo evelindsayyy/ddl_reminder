@@ -1,5 +1,18 @@
 # Finish Plan — four part-time weeks to "done"
 
+## Status: ALL FOUR WEEKS COMPLETE
+
+| Week | Done | What landed |
+|------|------|-------------|
+| Week 1 — Product holes | 2026-07-14 | Application edit/delete UI on `ApplicationCard`, plus a phone-safe stage-change menu (`moveApplicationToLane`) alongside desktop drag; terminal→active edits surface next-action so reminders reactivate. |
+| Week 2 — Feedback layer | 2026-07-14 | `aria-live` toast system with a friendly error-copy map; every previously-silent catch (dashboard mark-done, integrations copy/rotate/bookmarklet) now toasts and rolls back; pending states surfaced instead of discarded; `QuickAdd` migrated onto design tokens. |
+| Week 3 — Trust layer | 2026-07-14 | Route-handler tests (webhook, cron, ICS feed, Gradescope sync, assignments PATCH/DELETE) on a vitest + Supabase-double harness; component tests for QuickAdd and the stage-move menu; a11y sweep (labels, 44px targets, tablist arrow-keys, ColorPicker Escape/outside-click). |
+| Week 4 — Ship & upgrade | 2026-07-15 | Next.js 14.2.35 → 16.2.10 + React 19 (async request APIs, `@supabase/ssr` 0.6); the four remaining spec deviations closed (DB-backed Gradescope rate limit, ICS `METHOD:PUBLISH`/`REFRESH-INTERVAL`, Canvas re-sync preserves manually-edited `type`, editable timezone in Settings); PWA icon set (192/512/maskable) generated via `scripts/generate-icons.mjs`; notes shown on `ApplicationCard`; ESLint 9 flat config wired into CI; test-hardening ledger closed; docs and README brought current. |
+
+**Note:** the Next.js 16 / React 19 upgrade was not in the original Week 4 scope below — it was added when the ecosystem caught up mid-project and got folded into Week 4 as Task 1, ahead of the spec-deviation and polish items that were already planned. See `docs/plans/2026-07-15-week4-ship-and-upgrade.md` for the task-by-task breakdown.
+
+---
+
 **Baseline (2026-07-14 audit):** ~85–90% complete. Backend reliability layer is production-grade and fully specced-out; 563 assertions green in CI; zero stubs. The gap is product holes a daily user feels, the error/feedback layer, test depth above pure functions, and small spec stragglers. Full audit: `.completion-audit.md` (untracked).
 
 **Definition of done (daily-driver emphasis):** every feature reachable from the phone; no silent failures anywhere; every user-visible error in human words; the money paths covered by route-level tests; PWA installs with proper icons; the deferred spec deviations closed or explicitly re-deferred with a reason.
