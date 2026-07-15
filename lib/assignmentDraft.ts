@@ -1,0 +1,110 @@
+// Field-assembly + validation for the detailed add-deadline form.
+//
+// The detailed form collects labeled fields (course, title, type, separate
+// date + time, repeats, until, notes, tags, estimated hours) and must POST the
+// SAME payload shape QuickAdd sends to /api/assignments. This pure helper does
+// that assembly: it validates the two required things (a title and a due
+// date+time), derives the recurrence from the repeats choice, and returns
+// either a wire-ready payload or a map of inline field errors. Kept pure (no
+// React, no fetch) so it is unit-tested off the tsx chain and the round-trip
+// against createAssignmentSchema is asserted there.
+
+import { datetimeLocalToIso } from './datetimeLocal';
+import { ASSIGNMENT_TYPES } from './schemas';
+
+export type AssignmentType = (typeof ASSIGNMENT_TYPES)[number];
+
+export type RepeatMode = 'never' | 'weekly' | 'biweekly';
+
+// The wire payload — mirrors the object QuickAdd POSTs to /api/assignments
+// (courseCode/title/type/dueAt/tags always present; recurrence/notes/
+// estimatedHours only when the user supplied them). A structural subset of
+// createAssignmentSchema's input.
+export interface CreateAssignmentPayload {
+  courseCode: string | null;
+  title: string;
+  type: AssignmentType;
+  dueAt: string;
+  tags: string[];
+  recurrence?: { interval: 1 | 2; byweekday: number[]; until: string | null };
+  notes?: string;
+  estimatedHours?: number;
+}
+
+export interface BuildAssignmentDraftInput {
+  courseCode: string;
+  title: string;
+  type: AssignmentType;
+  date: string;
+  time: string;
+  repeats: RepeatMode;
+  until?: string;
+  notes?: string;
+  tags?: string[];
+  estimatedHours?: number | null;
+}
+
+export type BuildAssignmentDraftResult =
+  | { ok: true; payload: CreateAssignmentPayload }
+  | { ok: false; errors: Record<string, string> };
+
+const TITLE_REQUIRED = 'Give it a title.';
+const DUE_REQUIRED = 'Pick a due date and time.';
+const DUE_INVALID = "That date and time didn't read — try again.";
+
+// Local weekday (0=Sun..6=Sat) of the picked date. Noon avoids DST edges; the
+// value is the local weekday of the calendar day the user chose (matches the
+// parser's byweekday convention and QuickAdd's weekdayInTz).
+function weekdayOf(date: string): number {
+  return new Date(`${date}T12:00:00`).getDay();
+}
+
+export function buildAssignmentDraft(input: BuildAssignmentDraftInput): BuildAssignmentDraftResult {
+  const errors: Record<string, string> = {};
+
+  const title = input.title.trim();
+  if (!title) errors.title = TITLE_REQUIRED;
+
+  // Both parts are required; assemble the combined datetime-local string only
+  // when both are present so a partial pick reports the same "due" error.
+  const date = input.date.trim();
+  const time = input.time.trim();
+  let dueAt: string | null = null;
+  if (!date || !time) {
+    errors.due = DUE_REQUIRED;
+  } else {
+    dueAt = datetimeLocalToIso(`${date}T${time}`);
+    if (!dueAt) errors.due = DUE_INVALID;
+  }
+
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+
+  const courseCode = input.courseCode.trim() || null;
+
+  const payload: CreateAssignmentPayload = {
+    courseCode,
+    title,
+    type: input.type,
+    // dueAt is non-null here: the only path that leaves it null pushed a `due`
+    // error above and returned early.
+    dueAt: dueAt as string,
+    tags: input.tags ?? [],
+  };
+
+  if (input.repeats !== 'never') {
+    payload.recurrence = {
+      interval: input.repeats === 'biweekly' ? 2 : 1,
+      byweekday: [weekdayOf(date)],
+      until: input.until && input.until.trim() ? input.until.trim() : null,
+    };
+  }
+
+  const notes = input.notes?.trim();
+  if (notes) payload.notes = notes;
+
+  if (typeof input.estimatedHours === 'number' && !Number.isNaN(input.estimatedHours)) {
+    payload.estimatedHours = input.estimatedHours;
+  }
+
+  return { ok: true, payload };
+}
