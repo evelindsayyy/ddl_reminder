@@ -78,11 +78,28 @@ const reminderOffsetsSchema = z
   .min(0)
   .max(8);
 
+// A valid IANA timezone name (e.g. 'America/New_York'). Validated by asking the
+// runtime's Intl engine to construct a formatter with it — rejects anything the
+// platform doesn't recognize, matching the `Intl.supportedValuesOf` picker in
+// the UI without hardcoding the ~400-zone list.
+export const timezoneSchema = z.string().min(1).max(64).refine(
+  (tz) => {
+    try {
+      Intl.DateTimeFormat(undefined, { timeZone: tz });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  { message: 'Invalid IANA timezone' }
+);
+
 export const updateSettingsSchema = z
   .object({
     semesterEndDate: z.union([z.string().regex(isoDateRe), z.null()]).optional(),
     canvasIcsUrl: z.union([z.string().url().max(500), z.literal(''), z.null()]).optional(),
     reminderOffsetsHours: reminderOffsetsSchema.optional(),
+    timezone: timezoneSchema.optional(),
   })
   .refine((obj) => Object.keys(obj).length > 0, { message: 'No fields to update' });
 

@@ -117,6 +117,11 @@ describe('GET /api/ics/[token]', () => {
     expect(body).toContain('BEGIN:VEVENT');
     expect(body).toContain('UID:assignment-a1');
 
+    // Refresh hints so subscribing clients re-poll every 15 min.
+    expect(body).toContain('METHOD:PUBLISH');
+    expect(body).toContain('REFRESH-INTERVAL;VALUE=DURATION:PT15M');
+    expect(body).toContain('X-PUBLISHED-TTL:PT15M');
+
     // `[CODE] title` summary shape.
     expect(body).toContain('SUMMARY:[STA 240] HW5');
 

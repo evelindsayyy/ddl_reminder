@@ -42,12 +42,15 @@ export async function PATCH(request: NextRequest) {
     );
     patch.reminder_offsets_hours = sorted;
   }
+  if (parsed.data.timezone !== undefined) {
+    patch.timezone = parsed.data.timezone;
+  }
 
   const { data, error } = await supabase
     .from('user_prefs')
     .update(patch)
     .eq('user_id', user.id)
-    .select('semester_end_date, canvas_ics_url, reminder_offsets_hours')
+    .select('semester_end_date, canvas_ics_url, reminder_offsets_hours, timezone')
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -2,8 +2,14 @@
 // Uses ical-generator to produce a strict-compliant .ics file.
 // Per CLAUDE.md §8.
 
-import ical from 'ical-generator';
+import ical, { ICalCalendarMethod } from 'ical-generator';
 import { toZonedTime } from 'date-fns-tz';
+
+// How often subscribing clients (Apple/Google/Outlook) should re-poll the feed.
+// Mirrors the route's 15-min Cache-Control. Emitted three ways for broad client
+// support: METHOD:PUBLISH (marks the feed as a publication), the modern
+// RFC 7986 REFRESH-INTERVAL, and the legacy X-PUBLISHED-TTL fallback.
+const REFRESH_INTERVAL = 'PT15M';
 
 // ical-generator renders a Date using the *process* timezone, not the
 // calendar's `timezone` option (it does no UTC→zone conversion itself). On
@@ -52,6 +58,12 @@ export function buildIcs(args: BuildIcsArgs): string {
     prodId: { company: 'Deadline Tracker', product: 'ddl', language: 'EN' },
   });
 
+  // Refresh hints so subscribers re-poll every 15 min. PUBLISH + X-PUBLISHED-TTL
+  // go through ical-generator; REFRESH-INTERVAL (a non-`X-` RFC 7986 property)
+  // has no first-class setter and is injected into the rendered output below.
+  cal.method(ICalCalendarMethod.PUBLISH);
+  cal.x([{ key: 'X-PUBLISHED-TTL', value: REFRESH_INTERVAL }]);
+
   // Assignments → 1-hour blocks ending at due_at, with deep-link to the app.
   for (const a of args.assignments) {
     const due = new Date(a.due_at);
@@ -82,7 +94,15 @@ export function buildIcs(args: BuildIcsArgs): string {
     });
   }
 
-  return cal.toString();
+  // ical-generator only exposes `.x()` for `X-`-prefixed keys, so the standard
+  // REFRESH-INTERVAL property is inserted as a calendar-level line right after
+  // METHOD (guaranteed present since we always set PUBLISH above).
+  return cal
+    .toString()
+    .replace(
+      'METHOD:PUBLISH\r\n',
+      `METHOD:PUBLISH\r\nREFRESH-INTERVAL;VALUE=DURATION:${REFRESH_INTERVAL}\r\n`
+    );
 }
 
 function courseScopedTitle(a: IcsAssignmentRow): string {

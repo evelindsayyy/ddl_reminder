@@ -284,12 +284,13 @@ async function performCanvasSync(
 
     const existing = existingByExt.get(externalId);
     if (existing) {
-      // Canvas wins on title/due_at/external_url. Preserve user-owned fields.
+      // Canvas wins on title/due_at/external_url. Preserve user-owned fields —
+      // including `type`: it's derived (`'other'`) only on INSERT, so a
+      // user-edited type survives every re-sync rather than being clobbered.
       const { error } = await serviceClient
         .from('assignments')
         .update({
           title,
-          type: 'other', // Canvas events don't tell us a type; leave 'other' on import
           due_at: dueIso,
           external_url: ev.url ?? null,
           course_id: courseId,

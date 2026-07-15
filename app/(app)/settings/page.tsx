@@ -57,8 +57,14 @@ export default async function SettingsPage() {
       </header>
 
       <div>
-        <SettingsRow label="semester end" note="default 'until' for recurring assignments">
-          <SettingsForm initialSemesterEndDate={prefs.semester_end_date} />
+        <SettingsRow
+          label="preferences"
+          note="semester end (default 'until' for recurring) · timezone"
+        >
+          <SettingsForm
+            initialSemesterEndDate={prefs.semester_end_date}
+            initialTimezone={prefs.timezone}
+          />
         </SettingsRow>
 
         <SettingsRow label="theme" note="light · dark · follow system; stored on this device">
@@ -82,10 +88,6 @@ export default async function SettingsPage() {
             canvasLastSyncAt={prefs.canvas_last_sync_at}
             canvasLastSyncError={prefs.canvas_last_sync_error}
           />
-        </SettingsRow>
-
-        <SettingsRow label="timezone" note="set once during signup; immutable for now">
-          <span className="font-mono text-xs">{prefs.timezone}</span>
         </SettingsRow>
 
         <SettingsRow label="courses" note="auto-created the first time you save an assignment">
