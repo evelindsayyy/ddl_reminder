@@ -146,6 +146,38 @@ function base() {
   }
 }
 
+// --- estimatedHours outside the server's [0, 999] range → inline field error
+//     (mirrors createAssignmentSchema, so it never reaches a 400 toast) ---
+{
+  const res = buildAssignmentDraft({ ...base(), estimatedHours: -1 });
+  assert('negative hours not ok', res.ok === false);
+  if (!res.ok) {
+    assert(
+      'errors.estimatedHours present (negative)',
+      typeof res.errors.estimatedHours === 'string' && res.errors.estimatedHours.length > 0,
+    );
+  }
+}
+{
+  const res = buildAssignmentDraft({ ...base(), estimatedHours: 1000 });
+  assert('too-large hours not ok', res.ok === false);
+  if (!res.ok) {
+    assert(
+      'errors.estimatedHours present (too large)',
+      typeof res.errors.estimatedHours === 'string' && res.errors.estimatedHours.length > 0,
+    );
+  }
+}
+// Boundary values are legal and flow through.
+{
+  const res = buildAssignmentDraft({ ...base(), estimatedHours: 0 });
+  assert('zero hours ok', res.ok === true);
+  if (res.ok) {
+    eq('zero hours passthrough', res.payload.estimatedHours, 0);
+    assert('zero-hours payload parses', createAssignmentSchema.safeParse(res.payload).success);
+  }
+}
+
 // --- estimatedHours null is dropped (not sent as an invalid field) ---
 {
   const res = buildAssignmentDraft({ ...base(), estimatedHours: null, notes: '  ' });

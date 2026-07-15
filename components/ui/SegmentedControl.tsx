@@ -65,7 +65,9 @@ export function SegmentedControl<T extends string>({
           onClick={() => onChange(opt.value)}
           onKeyDown={onKeyDown}
           className={cn(
-            'rounded-sm px-3 py-1 text-xs transition-colors duration-150',
+            // Drawn size stays compact; the ::before overlay stretches the tap
+            // target to ≥44px (27px button + 2×9px) without moving neighbors.
+            "relative rounded-sm px-3 py-1 text-xs transition-colors duration-150 before:absolute before:inset-x-0 before:-inset-y-[9px] before:content-['']",
             value === opt.value ? 'bg-ink text-bg' : 'text-ink-soft hover:bg-bg-dim'
           )}
         >

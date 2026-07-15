@@ -58,6 +58,9 @@ export type BuildAssignmentDraftResult =
 const TITLE_REQUIRED = 'Give it a title.';
 const DUE_REQUIRED = 'Pick a due date and time.';
 const DUE_INVALID = "That date and time didn't read — try again.";
+// Mirrors createAssignmentSchema's estimatedHours bounds so an out-of-range
+// value gets an inline field error instead of a generic save-failed toast.
+const HOURS_RANGE = 'Estimated hours must be between 0 and 999.';
 
 // Local weekday (0=Sun..6=Sat) of the picked date. Noon avoids DST edges; the
 // value is the local weekday of the calendar day the user chose (matches the
@@ -84,9 +87,18 @@ export function buildAssignmentDraft(input: BuildAssignmentDraftInput): BuildAss
     if (!dueAt) errors.due = DUE_INVALID;
   }
 
+  const estimatedHours =
+    typeof input.estimatedHours === 'number' && !Number.isNaN(input.estimatedHours)
+      ? input.estimatedHours
+      : null;
+  if (estimatedHours !== null && (estimatedHours < 0 || estimatedHours > 999)) {
+    errors.estimatedHours = HOURS_RANGE;
+  }
+
   if (Object.keys(errors).length > 0) return { ok: false, errors };
 
   const courseCode = input.courseCode.trim() || null;
+  const notes = input.notes?.trim();
 
   const payload: CreateAssignmentPayload = {
     courseCode,
@@ -96,22 +108,18 @@ export function buildAssignmentDraft(input: BuildAssignmentDraftInput): BuildAss
     // error above and returned early.
     dueAt: dueAt as string,
     tags: input.tags ?? [],
+    ...(input.repeats !== 'never'
+      ? {
+          recurrence: {
+            interval: input.repeats === 'biweekly' ? (2 as const) : (1 as const),
+            byweekday: [weekdayOf(date)],
+            until: input.until && input.until.trim() ? input.until.trim() : null,
+          },
+        }
+      : {}),
+    ...(notes ? { notes } : {}),
+    ...(estimatedHours !== null ? { estimatedHours } : {}),
   };
-
-  if (input.repeats !== 'never') {
-    payload.recurrence = {
-      interval: input.repeats === 'biweekly' ? 2 : 1,
-      byweekday: [weekdayOf(date)],
-      until: input.until && input.until.trim() ? input.until.trim() : null,
-    };
-  }
-
-  const notes = input.notes?.trim();
-  if (notes) payload.notes = notes;
-
-  if (typeof input.estimatedHours === 'number' && !Number.isNaN(input.estimatedHours)) {
-    payload.estimatedHours = input.estimatedHours;
-  }
 
   return { ok: true, payload };
 }
