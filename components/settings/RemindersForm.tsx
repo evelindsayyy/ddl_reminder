@@ -71,7 +71,7 @@ export default function RemindersForm({ initialOffsets }: Props) {
             </button>
           </span>
         ))}
-        <span className="font-mono text-[11px] text-ink-faint">before due</span>
+        <span className="font-mono text-xs text-ink-faint">before due</span>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -95,14 +95,14 @@ export default function RemindersForm({ initialOffsets }: Props) {
         >
           + add
         </button>
-        <span className="font-mono text-[11px] text-ink-faint">presets:</span>
+        <span className="font-mono text-xs text-ink-faint">presets:</span>
         {PRESETS.map((h) => (
           <button
             key={h}
             type="button"
             onClick={() => add(h)}
             disabled={offsets.includes(h)}
-            className="rounded border border-dashed border-ink-faint px-1.5 py-0.5 font-mono text-[11px] text-ink-soft hover:border-ink hover:text-ink disabled:opacity-40"
+            className="rounded border border-dashed border-ink-faint px-1.5 py-0.5 font-mono text-xs text-ink-soft hover:border-ink hover:text-ink disabled:opacity-40"
           >
             {h}h
           </button>
@@ -117,7 +117,7 @@ export default function RemindersForm({ initialOffsets }: Props) {
         >
           {saving ? 'saving…' : 'save offsets'}
         </button>
-        {msg ? <span className="font-mono text-[11px] text-success">{msg}</span> : null}
+        {msg ? <span className="font-mono text-xs text-success">{msg}</span> : null}
       </div>
     </form>
   );

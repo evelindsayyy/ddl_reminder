@@ -158,7 +158,7 @@ export function AssignmentCard({
           {inSeries ? (
             <span
               title="Part of a recurring series"
-              className="rounded-sm bg-bg-dim px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-soft"
+              className="rounded-sm bg-bg-dim px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-ink-soft"
             >
               series
             </span>
@@ -166,7 +166,7 @@ export function AssignmentCard({
           {imported ? (
             <span
               title={`Synced from ${a.source}`}
-              className="rounded-sm bg-info/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-info"
+              className="rounded-sm bg-info/10 px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-info"
             >
               {a.source}
             </span>
@@ -193,7 +193,7 @@ export function AssignmentCard({
           )}
         </div>
 
-        <div className="mt-1 flex flex-wrap items-baseline gap-x-2 text-[11px]">
+        <div className="mt-1 flex flex-wrap items-baseline gap-x-2 text-xs">
           <span
             className={cn(
               'font-mono',
@@ -218,7 +218,7 @@ export function AssignmentCard({
         {a.notes && a.notes.trim() ? (
           <p
             className={cn(
-              'mt-1 line-clamp-2 whitespace-pre-line text-[11px] leading-snug',
+              'mt-1 line-clamp-2 whitespace-pre-line text-xs leading-snug',
               isDone ? 'text-ink-faint' : 'text-ink-soft'
             )}
             title={a.notes}
@@ -233,7 +233,7 @@ export function AssignmentCard({
               <span
                 key={tag}
                 className={cn(
-                  'rounded-sm bg-bg-dim px-1.5 py-0.5 text-[10px] font-mono lowercase tracking-wide',
+                  'rounded-sm bg-bg-dim px-1.5 py-0.5 text-xs font-mono lowercase tracking-wide',
                   isDone ? 'text-ink-faint' : 'text-ink-soft'
                 )}
               >
@@ -271,7 +271,7 @@ export function AssignmentCard({
             type="button"
             onClick={() => onDelete('series')}
             title="Delete the rest of this recurring series"
-            className="rounded border border-ink-faint/60 px-1.5 py-0.5 text-[10px] font-mono text-ink-soft hover:border-urgent hover:text-urgent"
+            className="rounded border border-ink-faint/60 px-1.5 py-0.5 text-xs font-mono text-ink-soft hover:border-urgent hover:text-urgent"
           >
             series
           </button>

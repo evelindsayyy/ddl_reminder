@@ -68,7 +68,7 @@ export function ApplicationEditForm({ application: a, onCancel, onSaved }: Appli
 
   const fieldClass =
     'rounded border border-ink-faint bg-bg px-2 py-1 text-sm focus:border-ink focus:outline-none disabled:opacity-60';
-  const labelClass = 'text-[10px] font-medium uppercase tracking-wide text-ink-faint';
+  const labelClass = 'text-xs font-medium uppercase tracking-wide text-ink-faint';
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-2 text-sm">

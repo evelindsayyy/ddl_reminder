@@ -300,8 +300,8 @@ export default function QuickAdd({
                           aria-pressed={on}
                           className={
                             on
-                              ? 'rounded bg-info px-2 py-0.5 text-[11px] text-bg'
-                              : 'rounded border border-info/40 bg-bg px-2 py-0.5 text-[11px] text-info'
+                              ? 'rounded bg-info px-2 py-0.5 text-xs text-bg'
+                              : 'rounded border border-info/40 bg-bg px-2 py-0.5 text-xs text-info'
                           }
                         >
                           {name}
@@ -311,14 +311,14 @@ export default function QuickAdd({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <label htmlFor="repeat_interval" className="text-[11px]">
+                    <label htmlFor="repeat_interval" className="text-xs">
                       Frequency:
                     </label>
                     <select
                       id="repeat_interval"
                       value={repeatInterval}
                       onChange={(e) => setRepeatInterval(Number(e.target.value) === 2 ? 2 : 1)}
-                      className="rounded border border-ink-faint bg-bg px-1.5 py-0.5 text-[11px]"
+                      className="rounded border border-ink-faint bg-bg px-1.5 py-0.5 text-xs"
                     >
                       <option value={1}>weekly</option>
                       <option value={2}>every other week</option>
@@ -326,7 +326,7 @@ export default function QuickAdd({
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    <label htmlFor="override_until" className="text-[11px]">
+                    <label htmlFor="override_until" className="text-xs">
                       End date:
                     </label>
                     <input
@@ -334,13 +334,13 @@ export default function QuickAdd({
                       type="date"
                       value={overrideUntil}
                       onChange={(e) => setOverrideUntil(e.target.value)}
-                      className="rounded border border-ink-faint bg-bg px-1.5 py-0.5 text-[11px]"
+                      className="rounded border border-ink-faint bg-bg px-1.5 py-0.5 text-xs"
                     />
                     {overrideUntil ? (
                       <button
                         type="button"
                         onClick={() => setOverrideUntil('')}
-                        className="text-[11px] underline"
+                        className="text-xs underline"
                       >
                         clear
                       </button>
@@ -350,7 +350,7 @@ export default function QuickAdd({
                   {recurrenceSummary ? (
                     <div className="font-medium text-ink">{recurrenceSummary.text}</div>
                   ) : (
-                    <div className="text-[11px] text-warn">
+                    <div className="text-xs text-warn">
                       Pick at least one weekday to save as a series.
                     </div>
                   )}

@@ -83,7 +83,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="font-display text-3xl font-semibold leading-none text-ink">
+        <h1 className="font-display text-3xl font-semibold leading-none text-ink md:text-4xl">
           {name ? `hey ${name}` : 'hey there'}{' '}
           <span className="font-mono text-base font-normal text-ink-soft">— {todayLabel}</span>
         </h1>

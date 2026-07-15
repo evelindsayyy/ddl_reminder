@@ -164,7 +164,7 @@ function OverdueBanner({
     >
       <header className="mb-2 flex items-baseline justify-between">
         <h2 className="font-display text-2xl font-semibold leading-none text-urgent">overdue</h2>
-        <span className="font-mono text-[11px] text-urgent">{items.length}</span>
+        <span className="font-mono text-xs text-urgent">{items.length}</span>
       </header>
       <BucketColumn
         title="overdue-list"

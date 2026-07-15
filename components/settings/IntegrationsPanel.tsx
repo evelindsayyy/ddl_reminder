@@ -150,7 +150,7 @@ export default function IntegrationsPanel({
         </p>
         {icsUrl ? (
           <div className="flex flex-wrap items-center gap-2">
-            <code className="flex-1 truncate rounded border border-ink-faint bg-bg-soft px-2 py-1 font-mono text-[11px] text-ink-soft">
+            <code className="flex-1 truncate rounded border border-ink-faint bg-bg-soft px-2 py-1 font-mono text-xs text-ink-soft">
               {webcal}
             </code>
             <button
@@ -206,17 +206,17 @@ export default function IntegrationsPanel({
             sync now
           </button>
         </form>
-        {canvasMsg ? <p className="font-mono text-[11px] text-success">{canvasMsg}</p> : null}
-        {syncMsg ? <p className="font-mono text-[11px] text-success">{syncMsg}</p> : null}
-        {canvasErr ? <p className="font-mono text-[11px] text-urgent">{canvasErr}</p> : null}
+        {canvasMsg ? <p className="font-mono text-xs text-success">{canvasMsg}</p> : null}
+        {syncMsg ? <p className="font-mono text-xs text-success">{syncMsg}</p> : null}
+        {canvasErr ? <p className="font-mono text-xs text-urgent">{canvasErr}</p> : null}
         {/* Persisted last-sync status (survives reloads; set by manual sync + daily cron). */}
         {canvasLastSyncError ? (
-          <p className="font-mono text-[11px] text-urgent">
+          <p className="font-mono text-xs text-urgent">
             ⚠ last sync failed
             {canvasLastSyncAt ? ` (${formatDueAt(canvasLastSyncAt, timezone)})` : ''}: {canvasLastSyncError}
           </p>
         ) : canvasLastSyncAt ? (
-          <p className="font-mono text-[11px] text-ink-faint">
+          <p className="font-mono text-xs text-ink-faint">
             last synced {formatDueAt(canvasLastSyncAt, timezone)}
           </p>
         ) : null}
@@ -247,7 +247,7 @@ export default function IntegrationsPanel({
             >
               regenerate
             </button>
-            <span className="font-mono text-[11px] text-ink-faint">drag → bookmarks bar</span>
+            <span className="font-mono text-xs text-ink-faint">drag → bookmarks bar</span>
           </div>
         ) : (
           <button
@@ -260,7 +260,7 @@ export default function IntegrationsPanel({
           </button>
         )}
         {gradescopeToken ? (
-          <p className="font-mono text-[10px] text-ink-faint">
+          <p className="font-mono text-xs text-ink-faint">
             token suffix: …{gradescopeToken.slice(-8)}
           </p>
         ) : null}
