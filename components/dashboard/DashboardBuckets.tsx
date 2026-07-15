@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useOptimistic, useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { bucketAssignments } from '@/lib/bucket';
 import { compareDueThenEffort } from '@/lib/score';
@@ -101,7 +102,7 @@ export function DashboardBuckets({
     items.filter((a) => !a.completed_at || fadingIds.has(a.id));
 
   // When every bucket is empty (no open assignments anywhere) the dashboard is
-  // a blank slate — nudge the user toward the add panel above.
+  // a blank slate — nudge the user toward the assignments page's add panel.
   const allEmpty =
     openOnly(buckets.overdue).length === 0 &&
     openOnly(buckets.today).length === 0 &&
@@ -156,7 +157,11 @@ export function DashboardBuckets({
 
       {allEmpty ? (
         <p className="font-display text-xl text-ink-soft">
-          nothing yet — add your first deadline above.
+          nothing yet —{' '}
+          <Link href="/assignments" className="underline decoration-wavy underline-offset-4 hover:text-ink">
+            add your first deadline
+          </Link>
+          .
         </p>
       ) : null}
     </div>
