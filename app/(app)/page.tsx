@@ -106,6 +106,13 @@ export default async function DashboardPage() {
         semesterEndDate={prefs.semester_end_date}
       />
 
+      {failedCount > 0 ? (
+        <p className="rounded border border-urgent/40 bg-urgent/5 p-3 text-sm text-urgent">
+          ⚠ {failedCount} reminder {failedCount === 1 ? 'email' : 'emails'} failed to send for open
+          assignments and will not be retried — double-check those deadlines.
+        </p>
+      ) : null}
+
       {error ? (
         <p className="rounded border border-urgent/40 bg-urgent/5 p-3 text-sm text-urgent">
           Failed to load: {error.message}
@@ -117,13 +124,6 @@ export default async function DashboardPage() {
           nowIso={new Date().toISOString()}
         />
       )}
-
-      {failedCount > 0 ? (
-        <p className="rounded border border-urgent/40 bg-urgent/5 p-3 text-sm text-urgent">
-          ⚠ {failedCount} reminder {failedCount === 1 ? 'email' : 'emails'} failed to send for open
-          assignments and will not be retried — double-check those deadlines.
-        </p>
-      ) : null}
     </div>
   );
 }
