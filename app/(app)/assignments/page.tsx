@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ensureUserPrefs } from '@/lib/prefs';
 import { firstRow } from '@/lib/supabaseJoin';
-import QuickAdd from '@/components/assignments/QuickAdd';
+import { AddDeadline } from '@/components/assignments/AddDeadline';
 import {
   AssignmentsView,
   type FilterMode,
@@ -105,9 +105,9 @@ export default async function AssignmentsPage({ searchParams }: PageProps) {
         </p>
       </header>
 
-      <QuickAdd
+      <AddDeadline
+        courses={knownCourses}
         timezone={prefs.timezone}
-        knownCourses={knownCourses}
         semesterEndDate={prefs.semester_end_date}
       />
 
