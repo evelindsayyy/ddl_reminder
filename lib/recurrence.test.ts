@@ -17,7 +17,6 @@ import {
   firstOccurrenceFor,
   computeDefaultUntil,
   seriesPropagationPatch,
-  type Recurrence,
 } from './recurrence';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 

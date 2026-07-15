@@ -155,6 +155,32 @@ describe('POST /api/webhooks/reminder', () => {
     expect(reminderUpdate?.payload).toMatchObject({ status: 'sent' });
   });
 
+  it('HONORS the dev bypass in non-prod (INSECURE=1, no signature → accepted, mark-sent runs)', async () => {
+    // Bypass flag on + non-production + NO signing keys + NO signature header.
+    // verifySignature short-circuits to `true`, so the handler proceeds all the
+    // way through delivery: the email fires and the reminders row flips 'sent'.
+    vi.stubEnv('INSECURE_REMINDER_WEBHOOK', '1');
+    vi.stubEnv('NODE_ENV', 'development');
+    qstash.verify.mockResolvedValue(undefined);
+    email.sendEmail.mockResolvedValue({ ok: true });
+    const admin = makeAdmin({ assignments: ASSIGNMENT_ROW, reminders: { data: null, error: null } });
+    supa.current = admin;
+
+    const res = await POST(
+      makeRequest(JSON.stringify({ assignmentId: 'a1', offsetHours: 12 }))
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+    // The bypass never constructs a Receiver — it returns before any verify.
+    expect(qstash.verify).not.toHaveBeenCalled();
+    // Delivery actually happened despite the missing signature.
+    expect(email.sendEmail).toHaveBeenCalledOnce();
+    expect(email.sendEmail.mock.calls[0][0]).toMatchObject({ to: 'grace@example.com' });
+    const reminderUpdate = admin.updates.find((u) => u.table === 'reminders');
+    expect(reminderUpdate?.payload).toMatchObject({ status: 'sent' });
+  });
+
   it('does NOT honor the dev bypass when NODE_ENV=production', async () => {
     // Bypass flag on, but production must ignore it. No signing keys, no
     // signature → verifySignature falls through to `return false` → 401.

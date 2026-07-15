@@ -21,19 +21,26 @@ const STAGE_TINT: Record<DisplayStage, string> = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function PipelineFunnel({ applications, timezone }: PipelineFunnelProps) {
-  const counts: Record<DisplayStage, number> = {
-    applied: 0,
-    interview: 0,
-    offer: 0,
-    rejected: 0,
-  };
-  for (const a of applications) {
-    counts[toDisplayStage(a.stage)] += 1;
-  }
+  // Memoized so its identity is stable across renders — the responseRateText
+  // useMemo below depends on it, and an object rebuilt every render would make
+  // that memo (and any future consumer) recompute needlessly.
+  const counts: Record<DisplayStage, number> = useMemo(() => {
+    const tally: Record<DisplayStage, number> = {
+      applied: 0,
+      interview: 0,
+      offer: 0,
+      rejected: 0,
+    };
+    for (const a of applications) {
+      tally[toDisplayStage(a.stage)] += 1;
+    }
+    return tally;
+  }, [applications]);
   const total = applications.length;
   const max = Math.max(1, ...Object.values(counts));
 
   const thisWeek = useMemo(() => {
+    // eslint-disable-next-line react-hooks/purity -- intentional wall-clock read: `now` bounds the display-only "this week" filter; recomputed when applications change to stay fresh. The result is derived data, never state or an effect input.
     const now = Date.now();
     return applications
       .filter(

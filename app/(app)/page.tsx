@@ -29,6 +29,7 @@ export default async function DashboardPage() {
 
   // Open or recently-completed (within 6 h) so a just-marked-done item
   // can still fade out — server-side filter trimmed by completed_at.
+  // eslint-disable-next-line react-hooks/purity -- async Server Component: Date.now() computes a per-request DB query cutoff, not render output. The purity rule can't distinguish server from client components; there is no render impurity here.
   const cutoff = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from('assignments')

@@ -103,6 +103,7 @@ function unescapeIcsText(s: string): string {
     .replace(/\\\\/g, '\\');
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- `params` (the ICS TZID segment) is intentionally retained: the tz-qualified branch is deferred (Canvas feeds return UTC 'Z' in practice, see below) and the param is part of this parser's contract for when it lands.
 function parseDtValue(value: string, params: string): Date | null {
   // Cases:
   //   20260428T235900Z              → UTC

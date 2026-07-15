@@ -103,6 +103,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         (t) => t.message === message && t.tone === tone
       );
       if (existing) {
+        // Eviction-position intent: a refreshed toast keeps its ORIGINAL slot
+        // by design — we only reset its timer, never re-append, so it does not
+        // jump to the newest position or reorder the visible stack.
         clearTimeoutFor(existing.id);
         scheduleDismiss(existing.id);
         return;

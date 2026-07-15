@@ -49,6 +49,7 @@ export default async function AssignmentsPage({ searchParams }: PageProps) {
     .order('due_at', { ascending: true });
 
   if (filter === 'open') {
+    // eslint-disable-next-line react-hooks/purity -- async Server Component: Date.now() computes a per-request DB query cutoff, not render output. The purity rule can't distinguish server from client components; there is no render impurity here.
     const cutoff = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
     query = query.or(`completed_at.is.null,completed_at.gt.${cutoff}`);
   } else if (filter === 'done') {

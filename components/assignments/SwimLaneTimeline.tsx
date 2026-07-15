@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState, type FormEvent } from 'react';
-import { toZonedTime } from 'date-fns-tz';
 import { cn } from '@/lib/utils';
 import { CourseChip } from '@/components/ui/CourseChip';
 import { TypePill } from '@/components/ui/TypePill';

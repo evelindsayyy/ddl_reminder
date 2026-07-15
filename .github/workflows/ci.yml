@@ -1,7 +1,7 @@
 name: CI
 
-# Gate on typecheck + unit tests. (Not `next build` — that needs Supabase/QStash
-# secrets CI doesn't have. Lint is intentionally omitted; ESLint is unconfigured.)
+# Gate on typecheck + lint + unit tests. (Not `next build` — that needs
+# Supabase/QStash secrets CI doesn't have.)
 on:
   push:
     branches: [main]
@@ -23,6 +23,9 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
 
       - name: Unit tests
         run: npm test

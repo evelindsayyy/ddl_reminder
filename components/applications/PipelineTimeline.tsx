@@ -32,6 +32,7 @@ export function PipelineTimeline({ applications, timezone }: PipelineTimelinePro
     );
   }
 
+  // eslint-disable-next-line react-hooks/purity -- intentional wall-clock read: `now` anchors display-only relative-time positions on the timeline, recomputed each render to stay fresh. The transient result never feeds state or effects.
   const now = Date.now();
 
   return (

@@ -22,8 +22,10 @@ let toastFn: ToastContextValue['toast'];
 let renderCount = 0;
 function Capture() {
   const ctx = useToast();
+  /* eslint-disable react-hooks/globals -- test-only probe: this render-null component exists solely to hoist the live `toast` fn and count renders into module scope so specs can fire toasts imperatively. It renders nothing, so the "impure render" concern doesn't apply. */
   toastFn = ctx.toast;
   renderCount += 1;
+  /* eslint-enable react-hooks/globals */
   return null;
 }
 

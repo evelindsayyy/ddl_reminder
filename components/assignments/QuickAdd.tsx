@@ -75,6 +75,7 @@ export default function QuickAdd({
 
   useEffect(() => {
     if (!input.trim()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing the derived parse preview/error when the input empties is intentional and terminal (early return, no cascade); it syncs display state to a cleared input rather than looping renders.
       setPreview(null);
       setError(null);
       return;
@@ -114,6 +115,7 @@ export default function QuickAdd({
   // recurrence leaves any manual toggle the user set intact.
   useEffect(() => {
     if (preview?.recurrence) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- seeds the manual recurrence controls from a fresh parse result; fires only when preview.recurrence changes, a deliberate external-state sync (parser → form) rather than a cascading update.
       setRecurring(true);
       setWeekdays(preview.recurrence.byweekday);
       setRepeatInterval(preview.recurrence.interval);
