@@ -34,7 +34,8 @@
     "test:datetimelocal": "tsx lib/datetimeLocal.test.ts",
     "test:apppatch": "tsx lib/applicationPatch.test.ts",
     "test:errorcopy": "tsx lib/errorCopy.test.ts",
-    "test": "tsx lib/parser/parser.assert.test.ts && tsx lib/recurrence.test.ts && tsx lib/bucket.test.ts && tsx lib/score.test.ts && tsx lib/canvas.test.ts && tsx lib/ics.test.ts && tsx lib/format.test.ts && tsx lib/email.test.ts && tsx lib/prefs.test.ts && tsx lib/colors.test.ts && tsx lib/applicationStage.test.ts && tsx lib/tags.test.ts && tsx lib/schemas.test.ts && tsx lib/assignmentFilter.test.ts && tsx lib/theme.test.ts && tsx lib/reminderSchedule.test.ts && tsx lib/datetime.test.ts && tsx lib/urlGuard.test.ts && tsx lib/supabaseJoin.test.ts && tsx lib/datetimeLocal.test.ts && tsx lib/applicationPatch.test.ts && tsx lib/errorCopy.test.ts",
+    "test:assignmentdraft": "tsx lib/assignmentDraft.test.ts",
+    "test": "tsx lib/parser/parser.assert.test.ts && tsx lib/recurrence.test.ts && tsx lib/bucket.test.ts && tsx lib/score.test.ts && tsx lib/canvas.test.ts && tsx lib/ics.test.ts && tsx lib/format.test.ts && tsx lib/email.test.ts && tsx lib/prefs.test.ts && tsx lib/colors.test.ts && tsx lib/applicationStage.test.ts && tsx lib/tags.test.ts && tsx lib/schemas.test.ts && tsx lib/assignmentFilter.test.ts && tsx lib/theme.test.ts && tsx lib/reminderSchedule.test.ts && tsx lib/datetime.test.ts && tsx lib/urlGuard.test.ts && tsx lib/supabaseJoin.test.ts && tsx lib/datetimeLocal.test.ts && tsx lib/applicationPatch.test.ts && tsx lib/errorCopy.test.ts && tsx lib/assignmentDraft.test.ts",
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
     "test:all": "npm test && vitest run"
