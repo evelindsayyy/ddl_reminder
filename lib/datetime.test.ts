@@ -91,6 +91,14 @@ eq(
   wall('2026-11-01', '12:00', 'America/New_York') ?? 'null',
   '2026-11-01T17:00:00.000Z',
 );
+// Spring-forward gap: 02:30 on Mar 8, 2026 does not exist in NY (clocks jump
+// 02:00 EST → 03:00 EDT). The offset round-trip resolves the nonexistent wall
+// time FORWARD — 03:30 EDT — i.e. 07:30 UTC, never a crash or null.
+eq(
+  'wall NY spring-forward gap 02:30 → resolves forward to 03:30 EDT',
+  wall('2026-03-08', '02:30', 'America/New_York') ?? 'null',
+  '2026-03-08T07:30:00.000Z',
+);
 // UTC zone: passthrough, no offset.
 eq(
   'wall UTC passthrough',

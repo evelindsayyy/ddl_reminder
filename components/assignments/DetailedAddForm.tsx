@@ -246,8 +246,12 @@ export function DetailedAddForm({ courses, timezone }: DetailedAddFormProps) {
         ) : null}
       </div>
 
-      {/* collapsed extras */}
-      <details className="rounded border border-ink-faint/40 px-3 py-2">
+      {/* collapsed extras — forced open when a field inside has an error, so
+          the inline message can't hide behind a collapsed summary */}
+      <details
+        open={errors.estimatedHours ? true : undefined}
+        className="rounded border border-ink-faint/40 px-3 py-2"
+      >
         <summary className="cursor-pointer text-xs font-medium uppercase tracking-wide text-ink-soft">
           more
         </summary>
@@ -286,8 +290,12 @@ export function DetailedAddForm({ courses, timezone }: DetailedAddFormProps) {
               onChange={(e) => setEstimatedHours(e.target.value)}
               disabled={pending}
               placeholder="e.g. 3"
+              aria-invalid={errors.estimatedHours ? true : undefined}
               className={fieldClass}
             />
+            {errors.estimatedHours ? (
+              <span className="text-xs text-urgent">{errors.estimatedHours}</span>
+            ) : null}
           </label>
         </div>
       </details>
