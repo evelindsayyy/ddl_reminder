@@ -7,7 +7,7 @@ import { syncCanvasForUser } from '@/lib/canvas';
 // session, then runs the sync against their saved Canvas URL using the
 // service-role client (so the canvas helper can be reused by cron too).
 export async function POST() {
-  const ssr = createSsrClient();
+  const ssr = await createSsrClient();
   const {
     data: { user },
   } = await ssr.auth.getUser();

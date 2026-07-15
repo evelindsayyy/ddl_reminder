@@ -8,7 +8,7 @@ import { parseInputSchema } from '@/lib/schemas';
 // Body: { input: string, referenceDate?: ISO string }
 // Returns: ParsedAssignment (dueAt as ISO string or null)
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

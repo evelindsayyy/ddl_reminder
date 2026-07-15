@@ -4,7 +4,7 @@ import { createCourseSchema } from '@/lib/schemas';
 import { pickColorForNewCourse } from '@/lib/colors';
 
 export async function GET(_: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -21,7 +21,7 @@ export async function GET(_: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

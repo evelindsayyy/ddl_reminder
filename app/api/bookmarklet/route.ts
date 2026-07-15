@@ -16,7 +16,7 @@ import { ensureGradescopeSyncToken } from '@/lib/prefs';
 // Robust to no-data: if it can't find the assignments table, the toast
 // reports `selectors_failed` so the user knows to ping us.
 export async function GET() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

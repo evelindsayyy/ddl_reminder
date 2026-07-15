@@ -4,7 +4,7 @@ import { ensureUserPrefs } from '@/lib/prefs';
 import { updateSettingsSchema } from '@/lib/schemas';
 
 export async function PATCH(request: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

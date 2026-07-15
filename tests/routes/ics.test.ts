@@ -65,7 +65,7 @@ describe('GET /api/ics/[token]', () => {
       user_prefs: { data: null, error: null },
     });
 
-    const res = await GET(req, { params: { token: 'nope-not-a-real-token' } });
+    const res = await GET(req, { params: Promise.resolve({ token: 'nope-not-a-real-token' }) });
     const body = await res.text();
 
     expect(res.status).toBe(404);
@@ -105,7 +105,7 @@ describe('GET /api/ics/[token]', () => {
       applications: { data: [], error: null },
     });
 
-    const res = await GET(req, { params: { token: 'good-token' } });
+    const res = await GET(req, { params: Promise.resolve({ token: 'good-token' }) });
     const body = await res.text();
 
     expect(res.status).toBe(200);
