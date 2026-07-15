@@ -7,7 +7,7 @@
 // pins an exact UTC instant computed by hand; inputs are fixed Dates so the
 // results never depend on the machine clock or the server's own timezone.
 
-import { startOfDayInZone, startOfNextDayInZone } from './datetime';
+import { startOfDayInZone, startOfNextDayInZone, wallTimeToIsoInZone } from './datetime';
 
 let passed = 0;
 let failed = 0;
@@ -71,6 +71,36 @@ eq('NY next day from pre-midnight instant', nextDay('2026-07-05T03:30:00Z', 'Ame
 // No-DST zones: plain +1 calendar day.
 eq('Tokyo next day', nextDay('2026-07-05T20:00:00Z', 'Asia/Tokyo'), '2026-07-06T15:00:00.000Z');
 eq('UTC next day', nextDay('2026-07-05T12:00:00Z', 'UTC'), '2026-07-06T00:00:00.000Z');
+
+// ---- wallTimeToIsoInZone: a date+time WALL TIME read in a given zone, as a
+//      UTC ISO instant. This is what the detailed add form uses so its dueAt
+//      matches /api/parse (both honor the user's configured timezone pref,
+//      never the machine's local zone). ----
+const wall = (date: string, time: string, tz: string): string | null =>
+  wallTimeToIsoInZone(date, time, tz);
+
+// Normal case: summer NY is EDT (UTC-4) → 23:59 local = 03:59 next day UTC.
+eq(
+  'wall NY summer 23:59 → +4h UTC',
+  wall('2026-07-20', '23:59', 'America/New_York') ?? 'null',
+  '2026-07-21T03:59:00.000Z',
+);
+// DST-boundary sanity: Nov 1, 2026 falls back at 2am, so noon is EST (UTC-5).
+eq(
+  'wall NY fall-back day noon → EST (-5)',
+  wall('2026-11-01', '12:00', 'America/New_York') ?? 'null',
+  '2026-11-01T17:00:00.000Z',
+);
+// UTC zone: passthrough, no offset.
+eq(
+  'wall UTC passthrough',
+  wall('2026-07-20', '23:59', 'UTC') ?? 'null',
+  '2026-07-20T23:59:00.000Z',
+);
+// Garbage input → null (unparseable date or time).
+eq('wall garbage date → null', wall('not-a-date', '23:59', 'UTC') ?? 'null', 'null');
+eq('wall garbage time → null', wall('2026-07-20', 'later', 'UTC') ?? 'null', 'null');
+eq('wall empty inputs → null', wall('', '', 'America/New_York') ?? 'null', 'null');
 
 console.log(`\ndatetime.test.ts — ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

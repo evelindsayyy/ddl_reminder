@@ -27,19 +27,22 @@ function eq(label: string, actual: unknown, expected: unknown): void {
   );
 }
 
-// Base valid input; individual tests override fields.
+// Base valid input; individual tests override fields. The timezone is the
+// user's configured pref (NOT the machine zone) — a non-UTC zone here pins the
+// conversion machine-independently.
 function base() {
   return {
     courseCode: 'STA 240',
     title: 'HW5',
     type: 'homework' as const,
-    date: '2026-04-28', // a Tuesday at local noon → getDay() === 2
+    date: '2026-04-28', // a Tuesday → weekday 2
     time: '23:59',
     repeats: 'never' as const,
+    timezone: 'America/New_York',
   };
 }
 
-// --- happy path: assembles dueAt via datetimeLocalToIso(`${date}T${time}`) ---
+// --- happy path: dueAt is the wall time read in the CONFIGURED zone ---
 {
   const res = buildAssignmentDraft(base());
   assert('happy path ok', res.ok === true);
@@ -47,8 +50,9 @@ function base() {
     eq('courseCode passthrough', res.payload.courseCode, 'STA 240');
     eq('title passthrough', res.payload.title, 'HW5');
     eq('type passthrough', res.payload.type, 'homework');
-    // dueAt is the ISO instant of 2026-04-28T23:59 in the runner's local zone.
-    eq('dueAt matches datetimeLocalToIso', res.payload.dueAt, new Date('2026-04-28T23:59').toISOString());
+    // 2026-04-28 23:59 in America/New_York is EDT (UTC-4) → 03:59 next day UTC.
+    // Pinned exactly (never the machine's local zone).
+    eq('dueAt is the pref-zone instant', res.payload.dueAt, '2026-04-29T03:59:00.000Z');
     eq('tags default to empty array', res.payload.tags, []);
     assert('no recurrence key when never', !('recurrence' in res.payload));
     assert('no notes key when absent', !('notes' in res.payload));
@@ -56,6 +60,13 @@ function base() {
     // round-trip: the payload validates under the create schema.
     assert('happy payload parses under createAssignmentSchema', createAssignmentSchema.safeParse(res.payload).success);
   }
+}
+
+// --- UTC pref zone: same wall time, no offset ---
+{
+  const res = buildAssignmentDraft({ ...base(), timezone: 'UTC' });
+  assert('utc zone ok', res.ok === true);
+  if (res.ok) eq('dueAt in UTC pref', res.payload.dueAt, '2026-04-28T23:59:00.000Z');
 }
 
 // --- empty title → errors.title, no fetch-able payload ---
