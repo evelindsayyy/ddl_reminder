@@ -95,6 +95,25 @@ describe('app/api/sync/gradescope', () => {
     expect(res.headers.get('vary')).toBe('Origin');
   });
 
+  it('token lookup DB error → 500 server_error with CORS headers present', async () => {
+    // The user_prefs select itself errors (DB unavailable) — must not be
+    // conflated with a bad/unknown token (401).
+    supa.current = makeAdmin({
+      maybeSingle: {
+        user_prefs: { data: null, error: { message: 'connection refused' } },
+      },
+    });
+
+    const res = await POST(
+      makeRequest({ token: TOKEN, courseName: 'STA 240', assignments: [] })
+    );
+
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({ error: 'server_error' });
+    expect(res.headers.get('access-control-allow-origin')).toBe('https://www.gradescope.com');
+    expect(res.headers.get('vary')).toBe('Origin');
+  });
+
   it('happy POST → user-scoped insert, 200 with CORS', async () => {
     const admin = makeAdmin({
       maybeSingle: {
@@ -169,6 +188,39 @@ describe('app/api/sync/gradescope', () => {
     // Carries the window forward: count 3 → 4.
     const rlUpsert = admin.upserts.find((u) => u.table === 'sync_rate_limits');
     expect(rlUpsert?.payload).toMatchObject({ user_id: 'user-1', count: 4 });
+  });
+
+  it('sync_rate_limits lookup errors (table not migrated yet) → fails open: 200, sync still happens', async () => {
+    // Pins pre-migration behavior: if `sync_rate_limits` doesn't exist yet,
+    // the select comes back { data: null, error: {...} }. The route only
+    // branches on `rl.data`, so this is treated the same as "no window yet"
+    // rather than blocking the sync.
+    const admin = makeAdmin({
+      maybeSingle: {
+        user_prefs: { data: { user_id: 'user-1' }, error: null },
+        courses: { data: { id: 'course-1' }, error: null },
+        sync_rate_limits: { data: null, error: { message: 'relation does not exist' } },
+      },
+      awaited: { assignments: { data: [], error: null } },
+    });
+    supa.current = admin;
+
+    const res = await POST(
+      makeRequest({
+        token: TOKEN,
+        courseName: 'STA 240',
+        assignments: [
+          { externalId: 'gs-1', title: 'PS1', dueAt: '2026-05-01T23:59:00.000Z' },
+        ],
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ inserted: 1, updated: 0, skipped: 0, total: 1 });
+
+    // The sync upsert against sync_rate_limits still ran, starting a fresh window.
+    const rlUpsert = admin.upserts.find((u) => u.table === 'sync_rate_limits');
+    expect(rlUpsert?.payload).toMatchObject({ user_id: 'user-1', count: 1 });
   });
 
   it('over the rate limit → 429 with Retry-After + CORS, no sync performed', async () => {
