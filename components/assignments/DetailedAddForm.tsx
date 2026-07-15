@@ -22,6 +22,9 @@ export interface DetailedAddFormCourse {
 
 export interface DetailedAddFormProps {
   courses: DetailedAddFormCourse[];
+  /** The user's IANA timezone pref — the zone the due wall time is read in,
+   *  matching how /api/parse resolves QuickAdd's wall times. */
+  timezone: string;
 }
 
 // Sentinel select value that swaps the course dropdown for a free-text input.
@@ -40,7 +43,7 @@ function parseTags(raw: string): string[] {
     .filter(Boolean);
 }
 
-export function DetailedAddForm({ courses }: DetailedAddFormProps) {
+export function DetailedAddForm({ courses, timezone }: DetailedAddFormProps) {
   const router = useRouter();
   const { toast } = useToast();
 
@@ -86,6 +89,7 @@ export function DetailedAddForm({ courses }: DetailedAddFormProps) {
       date,
       time,
       repeats,
+      timezone,
       until,
       notes,
       tags: parseTags(tags),

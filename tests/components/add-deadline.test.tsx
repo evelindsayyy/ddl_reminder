@@ -134,8 +134,9 @@ describe('AddDeadline', () => {
       type: 'homework',
       tags: [],
     });
-    expect(typeof body.dueAt).toBe('string');
-    expect(body.dueAt.endsWith('Z')).toBe(true);
+    // The wall time is read in the CONFIGURED timezone prop (America/New_York,
+    // EDT on Apr 28) — never the test runner's zone — so the instant is exact.
+    expect(body.dueAt).toBe('2026-04-29T03:59:00.000Z');
     expect(refreshMock).toHaveBeenCalled();
   });
 

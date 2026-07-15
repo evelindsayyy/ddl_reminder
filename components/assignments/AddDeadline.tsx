@@ -83,7 +83,7 @@ export function AddDeadline({ courses, timezone, semesterEndDate = null }: AddDe
             semesterEndDate={semesterEndDate}
           />
         ) : (
-          <DetailedAddForm courses={courses} />
+          <DetailedAddForm courses={courses} timezone={timezone} />
         )}
       </div>
     </section>

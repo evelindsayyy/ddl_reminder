@@ -8,8 +8,13 @@
 // either a wire-ready payload or a map of inline field errors. Kept pure (no
 // React, no fetch) so it is unit-tested off the tsx chain and the round-trip
 // against createAssignmentSchema is asserted there.
+//
+// dueAt is the picked wall time read in the USER'S CONFIGURED timezone pref
+// (wallTimeToIsoInZone), not the browser's zone — matching how /api/parse
+// resolves QuickAdd's wall times, so the two tabs save the same instant even
+// when the browser sits in a different zone than the pref.
 
-import { datetimeLocalToIso } from './datetimeLocal';
+import { wallTimeToIsoInZone } from './datetime';
 import { ASSIGNMENT_TYPES } from './schemas';
 
 export type AssignmentType = (typeof ASSIGNMENT_TYPES)[number];
@@ -38,6 +43,8 @@ export interface BuildAssignmentDraftInput {
   date: string;
   time: string;
   repeats: RepeatMode;
+  /** IANA zone the date+time wall time is read in (the user's timezone pref). */
+  timezone: string;
   until?: string;
   notes?: string;
   tags?: string[];
@@ -73,7 +80,7 @@ export function buildAssignmentDraft(input: BuildAssignmentDraftInput): BuildAss
   if (!date || !time) {
     errors.due = DUE_REQUIRED;
   } else {
-    dueAt = datetimeLocalToIso(`${date}T${time}`);
+    dueAt = wallTimeToIsoInZone(date, time, input.timezone);
     if (!dueAt) errors.due = DUE_INVALID;
   }
 
