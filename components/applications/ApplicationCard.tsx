@@ -45,7 +45,8 @@ export function ApplicationCard({
   const next = a.next_action_at;
   const urgent =
     next !== null
-      ? (new Date(next).getTime() - Date.now()) / (60 * 60 * 1000) < URGENCY_RED_HOURS
+      ? // eslint-disable-next-line react-hooks/purity -- intentional wall-clock read: `urgent` is a display-only badge comparing next_action_at to now, recomputed each render to stay fresh. The transient result never feeds state or effects.
+        (new Date(next).getTime() - Date.now()) / (60 * 60 * 1000) < URGENCY_RED_HOURS
       : false;
 
   return (

@@ -72,6 +72,7 @@ export function AssignmentCard({
   const [editing, setEditing] = useState(false);
   const isDone = a.completed_at !== null;
   const due = new Date(a.due_at).getTime();
+  // eslint-disable-next-line react-hooks/purity -- intentional wall-clock read: hoursUntilDue drives display-only overdue/urgent styling, recomputed each render to stay fresh. The transient result never feeds state or effects.
   const hoursUntilDue = (due - Date.now()) / (60 * 60 * 1000);
   const overdue = !isDone && hoursUntilDue < 0;
   const urgentSoon = !isDone && hoursUntilDue >= 0 && hoursUntilDue < URGENCY_RED_HOURS;

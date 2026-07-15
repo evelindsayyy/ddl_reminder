@@ -3,6 +3,7 @@
 // terminal->active reactivation edge (see lib/applicationPatch.ts).
 
 import { buildStageChangePatch } from './applicationPatch';
+import { updateApplicationSchema } from './schemas';
 
 let passed = 0;
 let failed = 0;
@@ -25,19 +26,31 @@ function eq(label: string, actual: unknown, expected: unknown): void {
   assert(`${label} (got ${actualStr}, want ${expectedStr})`, actualStr === expectedStr);
 }
 
-eq(
+// Every patch buildStageChangePatch emits is fed straight into
+// updateApplication, so it MUST satisfy updateApplicationSchema — in
+// particular the reactivation branch's Z-normalized `nextActionAt` has to pass
+// z.string().datetime() (Z-only). eq() proves the shape; this proves the patch
+// is actually accepted by the schema it will hit at runtime.
+function eqAndValid(label: string, actual: object, expected: unknown): void {
+  eq(label, actual, expected);
+  const parsed = updateApplicationSchema.safeParse(actual);
+  const detail = parsed.success ? 'ok' : JSON.stringify(parsed.error.issues);
+  assert(`${label} round-trips updateApplicationSchema (${detail})`, parsed.success === true);
+}
+
+eqAndValid(
   'plain stage move',
   buildStageChangePatch({ stage: 'applied', next_action_at: null }, 'oa'),
   { stage: 'oa' }
 );
 
-eq(
+eqAndValid(
   'into terminal: no nextActionAt',
   buildStageChangePatch({ stage: 'onsite', next_action_at: '2026-08-01T12:00:00.000Z' }, 'rejected'),
   { stage: 'rejected' }
 );
 
-eq(
+eqAndValid(
   'terminal -> active with next_action_at: carries reschedule',
   buildStageChangePatch({ stage: 'rejected', next_action_at: '2026-08-01T12:00:00.000Z' }, 'phone_screen'),
   { stage: 'phone_screen', nextActionAt: '2026-08-01T12:00:00.000Z' }
@@ -45,25 +58,25 @@ eq(
 
 // Regression: PostgREST returns timestamptz with an offset (+00:00), which
 // z.string().datetime() rejects. The helper must normalize it to a Z instant.
-eq(
+eqAndValid(
   'terminal -> active with PostgREST offset timestamp: normalizes to Z',
   buildStageChangePatch({ stage: 'rejected', next_action_at: '2026-08-01T12:00:00+00:00' }, 'phone_screen'),
   { stage: 'phone_screen', nextActionAt: '2026-08-01T12:00:00.000Z' }
 );
 
-eq(
+eqAndValid(
   'terminal -> active with next_action_at: Z input stays Z output',
   buildStageChangePatch({ stage: 'rejected', next_action_at: '2026-08-01T12:00:00.000Z' }, 'phone_screen'),
   { stage: 'phone_screen', nextActionAt: '2026-08-01T12:00:00.000Z' }
 );
 
-eq(
+eqAndValid(
   'terminal -> active without next_action_at: plain',
   buildStageChangePatch({ stage: 'withdrawn', next_action_at: null }, 'applied'),
   { stage: 'applied' }
 );
 
-eq(
+eqAndValid(
   'terminal -> terminal: plain',
   buildStageChangePatch({ stage: 'rejected', next_action_at: '2026-08-01T12:00:00.000Z' }, 'withdrawn'),
   { stage: 'withdrawn' }

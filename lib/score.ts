@@ -18,8 +18,6 @@ export interface ScoreOptions {
   now?: Date;
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 export function urgencyScore(row: Scoreable, options: ScoreOptions = {}): number {
   if (row.completed_at) return -Infinity; // sort completed to the bottom
   const now = options.now ?? new Date();

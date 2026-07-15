@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createCourseSchema } from '@/lib/schemas';
 import { pickColorForNewCourse } from '@/lib/colors';
 
-export async function GET(_: NextRequest) {
+export async function GET() {
   const supabase = await createClient();
   const {
     data: { user },

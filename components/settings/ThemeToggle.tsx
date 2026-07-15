@@ -36,6 +36,7 @@ export default function ThemeToggle() {
 
   // Hydrate from localStorage after mount (the server can't read it).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- post-mount hydration: the server can't read localStorage, so we sync the stored preference on the client after mount. Runs once (empty deps); the flash-free boot script already applied the class, so this only reconciles React state.
     setPref(readStoredPreference(localStorage.getItem(THEME_STORAGE_KEY)));
   }, []);
 
