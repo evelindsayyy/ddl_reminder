@@ -18,14 +18,10 @@ installable PWA, that I built and use every day.
 
 </div>
 
-<!-- Screenshot slot — capture by hand (auth is magic-link, so no headless job):
-       1. Desktop Chrome at 1440x900, dashboard with populated buckets
-          → docs/images/dashboard-desktop.png
-       2. Phone / DevTools 390x844, PWA installed if possible
-          → docs/images/dashboard-mobile.png
-     then add under the hero:
-       <img src="docs/images/dashboard-desktop.png" alt="Dashboard" width="100%" />
-     Keep each under ~500KB. -->
+<div align="center">
+  <img src="docs/images/quickadd-demo.gif" alt="Typing a natural-language deadline into quick add — course, type, date, tag, and weekly recurrence are parsed live" width="90%" />
+  <p><sub>One typed line — course, type, due date, tag, and weekly recurrence parsed live, before saving.</sub></p>
+</div>
 
 ## Why this exists
 
@@ -64,6 +60,12 @@ line, parsed deterministically in milliseconds — no LLM round-trip, no forms
   IANA timezone, optimistic mark-done, guided empty states.
 - **Installable PWA** — responsive single-column collapse, bottom tab nav,
   sticky add bar, home-screen icon set.
+
+<div align="center">
+  <img src="docs/images/dashboard-desktop.png" alt="Dashboard — overdue / today / this week / later buckets on desktop" width="68%" />
+  <img src="docs/images/dashboard-mobile.png" alt="Mobile PWA dashboard with bottom tab navigation and sticky add bar" width="24%" />
+  <p><sub>The same dashboard on desktop and as an installed mobile PWA (bottom tabs, sticky add bar).</sub></p>
+</div>
 
 ## Architecture
 
