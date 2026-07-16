@@ -3,302 +3,261 @@
 
 # Deadline Tracker
 
-**A full-stack Next.js + Supabase web app I built and use every day** to stay on
-top of coursework and internship deadlines. Type a due date in plain English and
-it parses, schedules email reminders, syncs to Apple Calendar, imports from Canvas
-and Gradescope, and tracks application pipelines — deployed on Vercel as an
-installable mobile PWA.
+**Natural-language deadline tracking that follows you everywhere** — type
+`STA 240 HW5 due Friday 11:59pm` and it becomes a parsed assignment with
+scheduled email reminders, an Apple Calendar event, and a spot on your
+dashboard. A full-stack Next.js + Supabase app, deployed on Vercel as an
+installable PWA, that I built and use every day.
 
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
 &nbsp;[![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
 &nbsp;[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 &nbsp;[![Supabase](https://img.shields.io/badge/Supabase-Postgres-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/)
-&nbsp;[![tests](https://img.shields.io/badge/tests-705%20passing-brightgreen)](.github/workflows/ci.yml)
+&nbsp;[![tests](https://img.shields.io/badge/tests-781%20passing-brightgreen)](.github/workflows/ci.yml)
 &nbsp;[![CI](https://github.com/evelindsayyy/ddl_reminder/actions/workflows/ci.yml/badge.svg)](https://github.com/evelindsayyy/ddl_reminder/actions/workflows/ci.yml)
 
 </div>
 
-The canonical spec lives in [CLAUDE.md](CLAUDE.md) — read that first if you're
-extending the project; this README is the install + run guide.
+<!-- Screenshot slot — capture by hand (auth is magic-link, so no headless job):
+       1. Desktop Chrome at 1440x900, dashboard with populated buckets
+          → docs/images/dashboard-desktop.png
+       2. Phone / DevTools 390x844, PWA installed if possible
+          → docs/images/dashboard-mobile.png
+     then add under the hero:
+       <img src="docs/images/dashboard-desktop.png" alt="Dashboard" width="100%" />
+     Keep each under ~500KB. -->
 
-## Stack
+## Why this exists
 
-| Layer          | Choice                              |
-|----------------|-------------------------------------|
-| Framework      | Next.js 16 App Router + TypeScript (React 19) |
-| Styling        | Tailwind CSS (hand-drawn type system: Patrick Hand / Caveat / JetBrains Mono) |
-| Database       | Supabase Postgres + Row-Level Security |
-| Auth           | Supabase Auth (email magic link)    |
-| Hosting        | Vercel                              |
-| Email          | Resend                              |
-| Job scheduler  | Upstash QStash                      |
-| Daily cron     | Vercel Cron                         |
-| NLP            | `chrono-node`                       |
-| Calendar out   | `ical-generator`                    |
-| Time math      | `date-fns` + `date-fns-tz`          |
+Coursework deadlines live in five places — Canvas, Gradescope, syllabi, email,
+and my own head. This app makes one canonical list and then **pushes it back
+out** to where I'll actually see it: email reminders at 1 week / 2 days / 12
+hours before each deadline, a `webcal://` feed that Apple Calendar subscribes
+to, and a phone-installable dashboard. Entry friction is near zero: one typed
+line, parsed deterministically in milliseconds — no LLM round-trip, no forms
+(though a labeled detailed form exists when you want it).
 
-## What it does
+## Features
 
-- **Quick add.** Type a line, get an assignment. `STA 240 HW5 due Friday 11:59pm`
-  parses into a course code, type, title, due date, and tags using `chrono-node` +
-  regex (no LLM round-trips on every keystroke).
-- **Recurring assignments.** `COMPSCI 372 hw every Tuesday 11:59pm` expands into
-  one row per Tuesday through your semester end. Includes biweekly and multi-day
-  patterns (`every MWF`, `every Tue and Thu`).
-- **Three assignments views.** `?view=list` (grouped by course),
-  `?view=calendar` (month grid), `?view=timeline` (per-course Gantt swim lanes,
-  desktop-only).
-- **Three applications views.** `?view=kanban` (drag stages), `?view=timeline`
-  (next-action ordering), `?view=funnel` (pipeline counts, response rate,
-  decision-due).
-- **Dashboard.** Today / this week / later buckets, computed in your IANA
-  timezone, with optimistic mark-done.
-- **Apple Calendar subscription.** Per-user `webcal://` feed at `/api/ics/[token]`.
-  Subscribe in any calendar app that speaks ICS.
-- **Canvas import.** Paste your Canvas `.ics` calendar feed URL into Settings,
-  the daily cron upserts your assignments. No OAuth, no API tokens.
-- **Gradescope sync.** SSO-friendly bookmarklet — drag to bookmarks bar, click
-  on any Gradescope course page, assignments sync to your account. Rate-limited
-  server-side (10 syncs/hour/user, DB-backed fixed window) to keep a runaway
-  bookmarklet click from hammering the endpoint.
-- **Email reminders.** At configurable offsets before each deadline (default
-  168h / 48h / 12h). QStash schedules; Resend sends. Daily cron sweeper catches
-  anything QStash drops.
-- **Editable timezone.** Settings lets you pick your IANA timezone from a
-  full `Intl.supportedValuesOf('timeZone')` list — every date parse, dashboard
-  bucket, and reminder fire time follows it.
-- **Mobile PWA.** Responsive collapse to single column, bottom tab nav, sticky
-  add bar. Installable home-screen icon set (192/512/maskable PNGs generated
-  from `public/icon.svg` via `scripts/generate-icons.mjs`).
+- **Natural-language quick add** — `chrono-node` + regex extract course code,
+  type, title, due date, tags, and recurrence from one line. Deterministic,
+  instant, self-scoring (low-confidence parses get a warning banner).
+- **Recurring assignments** — `every Tuesday 11:59pm until May 1` expands into
+  DST-safe rows through semester end; weekly, biweekly, and multi-day patterns
+  (`every MWF`), with series-wide edit and delete.
+- **Email reminders that don't silently die** — per-deadline scheduling via
+  QStash with a daily reconciliation cron that re-sends anything dropped and
+  backfills imported assignments (see [Architecture](#architecture)).
+- **Calendar out** — per-user tokenized `.ics` feed; subscribe once in Apple or
+  Google Calendar and every deadline appears next to the rest of your week.
+- **Canvas import** — paste your Canvas calendar feed URL; a daily sync (plus a
+  manual *sync now*) upserts assignments without clobbering your edits.
+- **Gradescope sync** — no public API and SSO-gated, so a generated,
+  token-authenticated bookmarklet scrapes your authenticated session client-side
+  and POSTs to a rate-limited endpoint.
+- **Application pipeline** — internship applications tracked separately with an
+  8-stage lifecycle, kanban / timeline / funnel views, and next-action reminders
+  riding the same infrastructure.
+- **Three assignment views** — list grouped by course, month calendar, and a
+  per-course Gantt-style timeline.
+- **Dashboard** — overdue / today / this week / later buckets computed in your
+  IANA timezone, optimistic mark-done, guided empty states.
+- **Installable PWA** — responsive single-column collapse, bottom tab nav,
+  sticky add bar, home-screen icon set.
 
-## Screenshots
+## Architecture
 
-<!-- TODO(owner): the authed UI (dashboard, kanban, settings) can't be
-     screenshotted headlessly — auth is Supabase email magic-link, so there's
-     no scriptable login for a CI/agent screenshot job. Capture by hand:
-       1. Sign in on desktop Chrome at 1440x900, go to the dashboard
-          (today/this week/later buckets populated with a few real or seed
-          assignments — not an empty state).
-       2. Save as docs/images/dashboard-desktop.png.
-       3. Open the same dashboard on a phone (or Chrome DevTools device
-          toolbar at 390x844, iPhone 12/13 size) with the PWA installed to
-          home screen if possible, to show the standalone chrome.
-       4. Save as docs/images/dashboard-mobile.png.
-       5. Replace this comment with:
-          ![Dashboard](docs/images/dashboard-desktop.png)
-          ![Dashboard on mobile](docs/images/dashboard-mobile.png)
-     Keep both under ~500KB (PNG, cropped to the browser viewport, no OS
-     chrome) so the README stays fast to load. -->
+```mermaid
+flowchart LR
+    subgraph entry [Entry]
+        QA["Quick add<br/>(NL parser)"]
+        DF["Detailed form"]
+        CV["Canvas .ics import"]
+        GS["Gradescope<br/>bookmarklet"]
+    end
 
-## Setup
+    subgraph core [Next.js 16 on Vercel]
+        API["API routes +<br/>server actions<br/>(Zod-validated)"]
+        DB[("Supabase Postgres<br/>row-level security")]
+    end
 
-### 1. Clone and install
+    subgraph out [Outbound]
+        QS["QStash<br/>delayed messages"]
+        WH["Signed webhook"]
+        RS["Resend email"]
+        CRON["Daily cron:<br/>sweep · backfill · digest"]
+        ICS["Tokenized .ics feed"]
+        CAL["Apple / Google<br/>Calendar"]
+    end
+
+    QA --> API
+    DF --> API
+    CV --> API
+    GS --> API
+    API --> DB
+    API -->|"schedule at<br/>due − offset"| QS
+    QS --> WH --> RS
+    CRON --> DB
+    CRON -->|"resend missed,<br/>backfill imports"| RS
+    DB --> ICS --> CAL
+```
+
+**Reminders are two-layered by design.** Layer 1 schedules a QStash message per
+`(deadline, offset)` pair, delivered to a signature-verified webhook that sends
+the email. Layer 2 is a daily cron that sweeps for scheduled reminders whose
+fire time passed without delivery, backfills reminders for assignments created
+by importers (which intentionally never schedule), and sends a morning digest.
+Either layer alone can miss; together a deadline notification survives QStash
+outages, importer edge cases, and webhook failures.
+
+### Stack
+
+| Layer         | Choice                                        | Why                                             |
+|---------------|-----------------------------------------------|-------------------------------------------------|
+| Framework     | Next.js 16 App Router + TypeScript (React 19) | One repo for UI and API, serverless on Vercel    |
+| Database      | Supabase Postgres                             | Row-level security as the primary defense layer  |
+| Auth          | Supabase Auth (email magic link)              | No passwords, no OAuth surface                   |
+| Email         | Resend                                        | Reminder + digest delivery                       |
+| Scheduling    | Upstash QStash + Vercel Cron                  | Per-reminder delays + daily reconciliation       |
+| Parsing       | `chrono-node` + regex                         | Deterministic, instant, free — no LLM on keystroke |
+| Time math     | `date-fns-tz` + `Intl`                        | Per-date zone offsets (DST-correct)              |
+| Calendar      | `ical-generator`                              | Standards-compliant `.ics` feed                  |
+| Styling       | Tailwind CSS                                  | Hand-drawn design system (see below)             |
+
+## Engineering notes
+
+Things in this codebase I'd point a reviewer at:
+
+- **Timezone correctness as a discipline.** Everything is stored as UTC
+  `timestamptz` and rendered in the user's IANA zone, but the hard part is
+  *parsing*: zone offsets are recomputed **per target date** (never once per
+  request), because an offset computed in April is wrong for a December
+  deadline. Wall times from the detailed form go through an `Intl`-based
+  round-trip that's pinned by tests for both DST boundaries — including the
+  spring-forward gap, where a nonexistent 2:30am resolves forward instead of
+  crashing.
+- **Defense in depth.** Row-level security on every table (a route that forgets
+  to filter still can't leak rows) · Zod validation on every mutating route ·
+  QStash webhook signature verification · SSRF guard on user-supplied fetch
+  URLs (HTTPS-only, private/loopback/metadata IPs blocked, redirects refused) ·
+  256-bit rotatable tokens for the calendar feed and bookmarklet · DB-backed
+  rate limiting on the sync endpoint · cron auth via bearer secret.
+- **781 tests across a dual harness.** Pure logic (parser, recurrence, bucketing,
+  scoring, schemas, time math — 721 assertions) runs as a dependency-free `tsx`
+  chain; route handlers and components (60 tests) run under vitest + Testing
+  Library with jsdom. CI runs typecheck, lint, and both suites on every push
+  and PR.
+- **Imports that respect your edits.** Canvas and Gradescope rows upsert on
+  `(user_id, source, external_id)`, so re-syncing never duplicates and never
+  overwrites your notes, time estimates, or completion state.
+- **Polymorphic reminders with a CHECK constraint.** Assignments and
+  applications share one `reminders` table (exactly one parent FK set),
+  one scheduler, one webhook, one sweeper — chosen over a join table or STI
+  and documented for reconsideration if a third parent type ever appears.
+- **Optimistic UI done carefully.** Mark-done uses `useOptimistic` with a fade
+  animation, per-item pending state, and server revalidation — failures roll
+  back and toast.
+
+## Design
+
+The UI is deliberately hand-drawn — the personality of a paper planner with the
+reliability of infrastructure:
+
+- **Patrick Hand** for body text, **Caveat** for display headings, **JetBrains
+  Mono** for dates, codes, and counts.
+- All colors flow from Tailwind tokens ([design/DESIGN_TOKENS.md](design/DESIGN_TOKENS.md));
+  the course palette in [lib/colors.ts](lib/colors.ts) is the only hex allowed in components.
+- Light and dark themes (class-based, no-flash boot script, OS-following by default).
+- Accessibility floor: 44px touch targets, labeled inputs, WAI-ARIA tab
+  patterns with roving tabindex, `aria-current` wayfinding, rem-based type
+  scale with a 13px minimum.
+
+## Getting started
+
+Requires Node ≥ 20 and a free-tier [Supabase](https://supabase.com) project.
+Resend and QStash are optional — the app no-ops gracefully without them.
 
 ```bash
 git clone git@github.com:evelindsayyy/ddl_reminder.git
 cd ddl_reminder
 npm install
+cp .env.local.example .env.local   # fill in values (table below)
+npm run dev                         # http://localhost:3000
 ```
 
-Requires Node ≥ 20 (`"engines"` in `package.json`; Next 16's minimum).
+| Variable | Where to get it | Required for |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Project Settings → API | everything |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API | calendar feed, cron, webhooks |
+| `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` for dev | bookmarklet, feed, email links |
+| `CRON_SECRET` | `openssl rand -hex 32` | cron auth |
+| `RESEND_API_KEY` + `FROM_EMAIL` | [resend.com](https://resend.com) | reminder + digest email |
+| `QSTASH_TOKEN` + `QSTASH_CURRENT_SIGNING_KEY` + `QSTASH_NEXT_SIGNING_KEY` | [console.upstash.com](https://console.upstash.com/qstash) | scheduled reminders |
 
-### 2. Configure environment
+Then:
+
+1. **Migrations** — paste each file in [supabase/migrations](supabase/migrations)
+   (`0001` → `0006`) into the Supabase SQL editor, in order.
+2. **Auth** — Supabase → Authentication → URL Configuration: set Site URL to
+   `http://localhost:3000` and add `http://localhost:3000/auth/callback` to
+   redirect URLs. (Email provider is on by default.)
+3. Sign in with your email — the magic link logs you in.
+
+To deploy: import the repo on [Vercel](https://vercel.com), add the same env
+vars, and [vercel.json](vercel.json) wires the daily cron automatically.
+
+### Connecting integrations
+
+- **Calendar feed:** Settings → integrations → copy the `webcal://` URL →
+  Apple Calendar *File → New Calendar Subscription* (or Google Calendar
+  *Other calendars → From URL*).
+- **Canvas:** Canvas → Calendar → *Calendar Feed* → copy the URL → paste in
+  Settings → *save* → *sync now*. The daily cron keeps it fresh.
+- **Gradescope:** Settings → *generate bookmarklet* → drag **⤓ Sync to ddl**
+  to the bookmarks bar → click it on any Gradescope assignments page.
+
+## Development
 
 ```bash
-cp .env.local.example .env.local
-```
-
-Fill in the values:
-
-| Variable                          | Where to get it                                     | Required for                  |
-|-----------------------------------|-----------------------------------------------------|-------------------------------|
-| `NEXT_PUBLIC_SUPABASE_URL`        | Supabase → Project Settings → API → Project URL     | everything                    |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY`   | Supabase → Project Settings → API → anon/public     | everything                    |
-| `SUPABASE_SERVICE_ROLE_KEY`       | Supabase → Project Settings → API → service_role    | `/api/ics`, cron, webhooks    |
-| `NEXT_PUBLIC_APP_URL`             | `http://localhost:3000` for dev                     | bookmarklet, ICS, email links |
-| `CRON_SECRET`                     | `openssl rand -hex 32`                              | Vercel cron auth              |
-| `RESEND_API_KEY` + `FROM_EMAIL`   | resend.com (verify a sending domain)                | reminder + digest email       |
-| `QSTASH_TOKEN` + `QSTASH_CURRENT_SIGNING_KEY` + `QSTASH_NEXT_SIGNING_KEY` | console.upstash.com/qstash | scheduled reminders |
-
-Resend and QStash are optional — the app gracefully no-ops if either is missing
-(reminder rows are still written so the daily sweeper can pick them up once
-Resend is configured).
-
-### 3. Run database migrations
-
-Paste each file in [supabase/migrations](supabase/migrations) into the Supabase
-SQL Editor in order:
-
-```
-0001_init.sql              — courses, assignments, applications, reminders, user_prefs + RLS
-0002_integrations.sql      — source tracking, recurrence groups, integration columns
-0003_ics_token.sql         — outbound calendar feed token
-0004_sync_status.sql       — Canvas last-sync timestamp + error
-0005_assignment_tags.sql   — tags[] column on assignments
-0006_sync_rate_limits.sql  — sync_rate_limits table (Gradescope bookmarklet rate limit)
-```
-
-### 4. Configure Supabase Auth
-
-1. **Authentication → Providers → Email** — confirm enabled (default).
-2. **Authentication → URL Configuration** — set Site URL to `http://localhost:3000`
-   and add `http://localhost:3000/auth/callback` to Redirect URLs.
-
-### 5. Run
-
-```bash
-npm run dev
-```
-
-Visit http://localhost:3000 — you'll be redirected to `/login`. Enter your
-email, click the magic link, you're in.
-
-## Commands
-
-```bash
-npm run dev             # Next.js dev server with hot reload
-npm run build           # production build
-npm run start           # serve the production build
-npm run lint            # eslint . (flat config, eslint.config.mjs)
+npm run dev             # dev server
 npm run typecheck       # tsc --noEmit
-npm test                # tsx pure-lib chain: parser, recurrence, bucket, score, canvas, ics, …
-npm run test:unit       # vitest — route + component tests (jsdom, RTL)
-npm run test:all        # canonical local gate — npm test && vitest run
-npm run test:parser     # smoke-test the NL parser against §7 cases (print-only)
-npm run icons:generate  # regenerate public/icon-{192,512,maskable-512}.png from icon.svg
+npm run lint            # eslint (flat config)
+npm test                # tsx pure-logic chain (parser, recurrence, time math, …)
+npm run test:unit       # vitest — routes + components (jsdom, RTL)
+npm run test:all        # both — the local gate before pushing
+npm run test:parser     # NL parser smoke test (prints parses for eyeballing)
+npm run icons:generate  # regenerate PWA icons from public/icon.svg
 ```
 
-### Dual test harness
+The two test runners are disjoint by design — `npm test` covers pure functions
+with zero dependencies (plain assertions, non-zero exit on failure), vitest
+covers everything that needs a DOM or route mocking. CI
+([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs typecheck, lint,
+and both suites; production builds are gated manually against Vercel preview
+deploys.
 
-There are two separate test runners, and CI runs both as distinct steps:
-`npm test` is a chain of `tsx <file>.test.ts` runs over the pure-function
-modules (no DB, no React — plain assertions, `process.exit(1)` on failure);
-`npm run test:unit` is vitest for route handlers and components (webhook,
-cron, gradescope, assignments routes; toast/stage-actions/quickadd
-components). `npm run test:all` runs both and is the gate to run locally
-before pushing — don't assume either suite alone covers the other. See
-[CLAUDE.md §11](CLAUDE.md#11-commands) for the full breakdown.
-
-### CI
-
-GitHub Actions (`.github/workflows/ci.yml`) runs, on every push to `main`
-and on pull requests: `npm run typecheck`, `npm run lint` (ESLint 9 flat
-config), `npm test`, and `npm run test:unit`. It does **not** run
-`next build` (that needs Supabase/QStash secrets) — that gate is manual,
-against a Vercel preview deploy, before merging to `main`.
-
-## Subscribing to your calendar feed
-
-1. Sign in → **Settings → integrations → calendar feed** → click **copy**.
-2. In Apple Calendar: **File → New Calendar Subscription** → paste the
-   `webcal://` URL → ✓. Updates poll every 15min–few hours (OS-controlled).
-
-## Importing from Canvas
-
-1. Log into your Canvas instance → sidebar **Calendar** → **Calendar Feed** →
-   copy the URL.
-2. **Settings → integrations → canvas import** → paste → **save** → **sync now**.
-3. The daily cron (deployed to Vercel) will keep it in sync automatically.
-
-## Importing from Gradescope
-
-Gradescope has no public API and uses SSO at most universities, so we use a
-bookmarklet that scrapes the assignments table from your authenticated session.
-
-1. **Settings → integrations → gradescope** → **generate bookmarklet**.
-2. Drag the **⤓ Sync to ddl** link to your bookmarks bar.
-3. On any Gradescope course page (`.../courses/<id>/assignments`), click the
-   bookmarklet. A toast confirms the sync.
-
-The token sits in `user_prefs.gradescope_sync_token`; click **regenerate** at
-any time to invalidate the old bookmarklet.
-
-## Deployment to Vercel
-
-1. Push to GitHub (this repo already has `origin`).
-2. Import the project on vercel.com.
-3. Add all environment variables from `.env.local` to the Vercel project
-   settings.
-4. [vercel.json](vercel.json) registers the daily cron at 11:00 UTC; Vercel
-   wires it automatically.
+Architecture decisions, conventions, and gotchas (especially the timezone
+rules) live in [CLAUDE.md](CLAUDE.md) — read it before extending the project.
 
 ## Project structure
 
 ```
 app/
-  (auth)/login/         — magic-link form
-  (app)/                — authed routes (auth check in layout)
-    page.tsx            — dashboard (today/this week/later buckets)
-    assignments/        — list / calendar / timeline views
-    applications/       — kanban / timeline / funnel views
-    settings/           — semester, reminders, integrations, courses
-  api/
-    parse/              — NL parser endpoint
-    assignments/        — CRUD
-    courses/            — CRUD
-    settings/           — PATCH
-    canvas/sync/        — manual Canvas pull
-    sync/gradescope/    — bookmarklet endpoint (CORS, token-authed)
-    bookmarklet/        — emits the bookmarklet JS for the current user
-    ics/[token]/        — outbound calendar feed
-    ics-token/rotate/   — Settings regenerate
-    gradescope-token/   — get/rotate the bookmarklet token
-    webhooks/reminder/  — QStash → email
-    cron/daily/         — Vercel cron entry
-lib/
-  parser/               — chrono-node + regex extraction
-  recurrence.ts         — pattern detection + DST-safe expansion
-  bucket.ts             — dashboard bucketing
-  score.ts              — urgency score
-  canvas.ts             — ICS feed parser + sync runner
-  ics.ts                — outbound feed builder
-  email.ts              — Resend wrapper + templates
-  reminders.ts          — QStash schedule/cancel
-  applications.ts       — server actions (no /api/applications routes)
-  prefs.ts              — user_prefs helpers + token generation
-  schemas.ts            — Zod schemas (single source of input validation)
-  colors.ts             — course color palette
-  format.ts             — formatDueAt / formatRelative
-  supabase/             — SSR + browser clients + session middleware
-components/
-  dashboard/            — DashboardBuckets, BucketColumn, AssignmentCard
-  assignments/          — GroupedByCourseList, CalendarMonthView, SwimLaneTimeline, AssignmentsView, QuickAdd
-  applications/         — PipelineKanban, PipelineTimeline, PipelineFunnel, ApplicationsView, AddApplicationForm
-  settings/             — CoursesManager, SettingsForm, RemindersForm, IntegrationsPanel
-  layout/               — MobileBottomNav (md:hidden tabs), MobileAddBar (sticky add bar)
-  ui/                   — CourseChip, TypePill, RelativeTime
-supabase/migrations/    — 0001 init · 0002 integrations · 0003 ics_token · 0004 sync_status · 0005 assignment_tags · 0006 sync_rate_limits
-design/                 — wireframes (index.html + *.jsx), HANDOFF, DESIGN_TOKENS
-docs/                   — FINISH_PLAN.md, weekly implementation plans, images/ (README screenshot slot)
+  (auth)/login/         magic-link form
+  (app)/                authed routes — dashboard, assignments, applications, settings
+  api/                  parse · assignments · courses · settings · canvas/sync ·
+                        sync/gradescope · bookmarklet · ics/[token] · token rotation ·
+                        webhooks/reminder · cron/daily
+lib/                    pure logic, one module per concern, most with sibling tests —
+                        parser/ · recurrence · reminders · reminderSchedule · bucket ·
+                        score · canvas · ics · email · prefs · schemas · urlGuard ·
+                        assignmentDraft · datetime · applications (server actions)
+components/             by feature: dashboard/ · assignments/ · applications/ ·
+                        settings/ · layout/ · ui/
+supabase/migrations/    0001 init → 0006 sync_rate_limits (additive, RLS from day one)
+design/                 wireframes + design tokens (not part of the build)
 ```
-
-## Design system
-
-The app uses a deliberately hand-drawn type system; this is the personality.
-See [design/DESIGN_TOKENS.md](design/DESIGN_TOKENS.md) for the canonical reference.
-
-- **Patrick Hand** — body text, list rows, card content, button labels (default `font-sans`)
-- **Caveat** — page titles, bucket headers, greeting, empty states (`font-display`, semibold at ≥ `text-2xl`)
-- **JetBrains Mono** — due dates, timestamps, course codes, counts (`font-mono`)
-
-The course color palette in [lib/colors.ts](lib/colors.ts) is the only set of
-hex values components are allowed to ship — everything else comes from Tailwind
-tokens declared in [tailwind.config.ts](tailwind.config.ts).
-
-## Status
-
-| Feature                          | Status        |
-|----------------------------------|---------------|
-| Auth + quick add + list + courses (Days 1–3) | done   |
-| Applications kanban/timeline/funnel (Days 8–9) | done |
-| Dashboard with buckets (Day 11)  | done          |
-| Recurring assignments            | done          |
-| Outbound .ics feed (Day 10)      | done          |
-| Canvas .ics import               | done — needs cron deployed for auto |
-| Gradescope bookmarklet           | done          |
-| Reminders infrastructure         | done — needs Resend + QStash to fire |
-| Vercel cron config               | wired         |
 
 ## License
 
-Personal project; no license. Don't redistribute without asking.
+Personal project; no license granted. Please don't redistribute without asking.
