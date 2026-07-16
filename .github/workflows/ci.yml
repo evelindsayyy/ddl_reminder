@@ -7,6 +7,12 @@ on:
     branches: [main]
   pull_request:
 
+# Least-privilege token: CI only reads the repo. Fork PRs already get a
+# read-only token, but this pins it for same-repo runs too — a compromised
+# dependency postinstall script can't push or write with it.
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
