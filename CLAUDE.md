@@ -594,6 +594,13 @@ Never commit `.env.local`. Vercel project settings store production values.
 
 - **RLS is the primary defense.** API routes use the user's session, not
   the service role key, except for the cron job.
+- **Sign-ups are closed.** This is a single-user instance: the login page
+  passes `shouldCreateUser: false` to `signInWithOtp`, and — the part that
+  actually enforces it — "Allow new users to sign up" must stay **off** in
+  the Supabase dashboard (Auth → Sign In / Providers). The client flag alone
+  is not security: anyone with the public anon key could call the auth API
+  directly with `shouldCreateUser: true` if the dashboard still allows
+  sign-ups.
 - **Cron endpoint auth:** verify `Authorization: Bearer $CRON_SECRET`.
 - **QStash webhook auth:** verify signature with `@upstash/qstash` Receiver.
 - **`.ics` token:** 32+ random chars, stored in `user_prefs`, rotatable.
