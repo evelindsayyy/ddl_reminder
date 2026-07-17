@@ -29,11 +29,14 @@ export default function LoginPage() {
         email: trimmed,
         options: {
           emailRedirectTo: `${appUrl}/auth/callback`,
-          shouldCreateUser: true,
+          shouldCreateUser: false,
         },
       });
       if (error) {
-        setStatus({ kind: 'error', message: error.message });
+        const message = /signup|not allowed|not authorized/i.test(error.message)
+          ? 'This is a personal instance — sign-ups are closed.'
+          : error.message;
+        setStatus({ kind: 'error', message });
         return;
       }
       setStatus({ kind: 'sent', email: trimmed });
